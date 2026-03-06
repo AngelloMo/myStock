@@ -1,14 +1,30 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Hello World</title>
-  <link href='/style.css' rel='stylesheet'>
+    <title>KOSPI 200 Stock Recommendation</title>
+    <script src="https://code.highcharts.com/stock/highstock.js"></script>
+    <script src="https://code.highcharts.com/stock/modules/data.js"></script>
+    <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
+    <script src="https://code.highcharts.com/stock/modules/accessibility.js"></script>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <h1>Hello, world!</h1>
-  <button onclick="console.log('hello');">Press me</button>
-  <script defer type="text/javascript" src="/main.js"></script>
+    <h1>KOSPI 200 Stock Analysis</h1>
+    <div class="controls">
+        <label for="stock-select">Select Stock:</label>
+        <select id="stock-select"></select>
+
+        <label>Timeframe:</label>
+        <button id="timeframe-daily" class="active">Daily</button>
+        <button id="timeframe-weekly">Weekly</button>
+        <button id="timeframe-monthly">Monthly</button>
+    </div>
+    <div id="recommendation">
+        <h2>Selected Stock: <span id="stock-name"></span></h2>
+        <p>Code: <span id="stock-code"></span></p>
+        <!-- The reason will be calculated and displayed if needed, or removed -->
+    </div>
+    <div id="container"></div>
+    <script src="main.js"></script>
 </body>
 </html>
