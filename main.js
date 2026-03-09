@@ -1,3 +1,4 @@
+// Global variables
 let allStocksData = [];
 let currentStock = null;
 let currentChartTimeframe = 'Daily';
@@ -10,6 +11,7 @@ let bubbleAnimationInterval = null;
 let stockColors = {};
 let animationSpeed = 300;
 
+// Share proxy weights for Market Cap
 const sharesProxy = {
     'AAPL': 150, 'MSFT': 70, 'AMZN': 100, 'GOOGL': 60, 'GOOG': 60,
     'META': 25, 'NVDA': 240, 'TSLA': 30, 'AVGO': 4, 'PEP': 13,
@@ -37,112 +39,173 @@ function getMarketCap(stockCode, price) {
     return price * shares;
 }
 
-function openTab(evt, tabName) {
+// Tab Switch Function - Explicitly attached to window for global access
+window.openTab = function(evt, tabName) {
     const tabContents = document.getElementsByClassName("tab-content");
-    for (let i = 0; i < tabContents.length; i++) tabContents[i].classList.remove("active");
+    for (let i = 0; i < tabContents.length; i++) {
+        tabContents[i].classList.remove("active");
+    }
     const tabLinks = document.getElementsByClassName("tab-link");
-    for (let i = 0; i < tabLinks.length; i++) tabLinks[i].classList.remove("active");
-    document.getElementById(tabName).classList.add("active");
-    if (evt && evt.currentTarget) evt.currentTarget.classList.add("active");
+    for (let i = 0; i < tabLinks.length; i++) {
+        tabLinks[i].classList.remove("active");
+    }
+    const targetTab = document.getElementById(tabName);
+    if (targetTab) targetTab.classList.add("active");
+    
+    if (evt && evt.currentTarget) {
+        evt.currentTarget.classList.add("active");
+    } else {
+        // Fallback: find the button if event is missing
+        const buttons = document.querySelectorAll('.tab-link');
+        buttons.forEach(btn => {
+            if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes(tabName)) {
+                btn.classList.add('active');
+            }
+        });
+    }
 
     if (tabName === 'bubble-tab' && bubbleChart) bubbleChart.reflow();
     if (tabName === 'analysis-tab' && stockChart) stockChart.reflow();
     
-    // 탭 이동 시 애니메이션 일시정지 (리소스 절약 및 싱크 방지)
     if (tabName !== 'bubble-tab' && bubbleAnimationInterval) {
-        toggleBubbleAnimation();
+        toggleBubbleAnimation(); // Stop animation when leaving tab
     }
-}
+};
 
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('speed-value').textContent = `${animationSpeed}ms`;
-    document.getElementById('speed-control').value = animationSpeed;
+    const speedVal = document.getElementById('speed-value');
+    const speedCtrl = document.getElementById('speed-control');
+    if (speedVal) speedVal.textContent = `${animationSpeed}ms`;
+    if (speedCtrl) speedCtrl.value = animationSpeed;
 
-    fetch('stock.json')
+    // Use relative path for fetch
+    fetch('./stock.json')
         .then(response => {
-            if (!response.ok) throw new Error('데이터 로드 실패');
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             return response.json();
         })
         .then(data => {
+            if (!Array.isArray(data) || data.length === 0) throw new Error('Invalid or empty data');
+            
             allStocksData = data;
             const colors = Highcharts.getOptions().colors;
             allStocksData.filter(s => s.code !== '^NDX').forEach((stock, i) => {
                 stockColors[stock.code] = colors[i % colors.length];
             });
+            
             populateStockSelect(allStocksData);
             
-            if (allStocksData.length > 0) {
-                const ndxIndex = allStocksData.findIndex(stock => stock.code === '^NDX');
-                currentStock = ndxIndex !== -1 ? allStocksData[ndxIndex] : allStocksData[0];
+            // Find NASDAQ 100 Index or first stock
+            const ndxIndex = allStocksData.findIndex(stock => stock.code === '^NDX');
+            currentStock = ndxIndex !== -1 ? allStocksData[ndxIndex] : allStocksData[0];
+            
+            if (currentStock && currentStock.historicalData && currentStock.historicalData.length > 0) {
+                const sortedData = [...currentStock.historicalData].sort((a, b) => new Date(a.Date) - new Date(b.Date));
                 
-                if (currentStock.historicalData && currentStock.historicalData.length > 0) {
-                    const sortedData = [...currentStock.historicalData].sort((a, b) => new Date(a.Date) - new Date(b.Date));
-                    document.getElementById('start-date').value = sortedData[0].Date;
-                    document.getElementById('end-date').value = sortedData[sortedData.length - 1].Date;
-                    
+                const startDateEl = document.getElementById('start-date');
+                const endDateEl = document.getElementById('end-date');
+                const bubbleStartEl = document.getElementById('bubble-start-date');
+
+                if (startDateEl) startDateEl.value = sortedData[0].Date;
+                if (endDateEl) endDateEl.value = sortedData[sortedData.length - 1].Date;
+                
+                if (bubbleStartEl) {
                     const startDateObj = new Date(sortedData[sortedData.length - 1].Date);
                     startDateObj.setMonth(startDateObj.getMonth() - 6);
                     const startDateStr = startDateObj.toISOString().split('T')[0];
-                    document.getElementById('bubble-start-date').value = startDateStr < sortedData[0].Date ? sortedData[0].Date : startDateStr;
+                    bubbleStartEl.value = startDateStr < sortedData[0].Date ? sortedData[0].Date : startDateStr;
                 }
+                
                 updateStockDisplay(currentStock);
                 renderChart(currentStock, currentChartTimeframe);
                 renderBubbleChart(allStocksData);
             }
         })
-        .catch(err => alert(err.message));
+        .catch(err => {
+            console.error('Data loading error:', err);
+            const msg = document.createElement('div');
+            msg.style.color = 'red';
+            msg.style.padding = '20px';
+            msg.style.textAlign = 'center';
+            msg.textContent = `데이터를 불러올 수 없습니다: ${err.message}. stock.json 파일이 존재하는지 확인해주세요.`;
+            document.body.prepend(msg);
+        });
 
-    document.getElementById('stock-search').addEventListener('input', (event) => {
-        const query = event.target.value.toLowerCase();
-        const filteredStocks = allStocksData.filter(stock => 
-            stock.name.toLowerCase().includes(query) || stock.code.toLowerCase().includes(query)
-        );
-        populateStockSelect(filteredStocks);
+    // Listeners with null checks
+    const searchInput = document.getElementById('stock-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', (event) => {
+            const query = event.target.value.toLowerCase();
+            const filteredStocks = allStocksData.filter(stock => 
+                stock.name.toLowerCase().includes(query) || stock.code.toLowerCase().includes(query)
+            );
+            populateStockSelect(filteredStocks);
+        });
+    }
+
+    ['daily', 'weekly', 'monthly'].forEach(tf => {
+        const btn = document.getElementById(`timeframe-${tf}`);
+        if (btn) btn.addEventListener('click', () => setTimeframe(tf.charAt(0).toUpperCase() + tf.slice(1)));
     });
 
-    document.getElementById('timeframe-daily').addEventListener('click', () => setTimeframe('Daily'));
-    document.getElementById('timeframe-weekly').addEventListener('click', () => setTimeframe('Weekly'));
-    document.getElementById('timeframe-monthly').addEventListener('click', () => setTimeframe('Monthly'));
-
-    document.getElementById('start-date').addEventListener('change', () => {
-        if (currentStock) renderChart(currentStock, currentChartTimeframe);
-    });
-    document.getElementById('end-date').addEventListener('change', () => {
-        if (currentStock) renderChart(currentStock, currentChartTimeframe);
-    });
-    document.getElementById('bubble-start-date').addEventListener('change', () => {
-        if (bubbleAnimationInterval) toggleBubbleAnimation();
-        renderBubbleChart(allStocksData);
+    ['start-date', 'end-date'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', () => {
+            if (currentStock) renderChart(currentStock, currentChartTimeframe);
+        });
     });
 
-    document.getElementById('stock-select').addEventListener('change', (event) => selectStockByCode(event.target.value));
-    document.getElementById('play-bubble').addEventListener('click', toggleBubbleAnimation);
+    const bubbleStartEl = document.getElementById('bubble-start-date');
+    if (bubbleStartEl) {
+        bubbleStartEl.addEventListener('change', () => {
+            if (bubbleAnimationInterval) toggleBubbleAnimation();
+            renderBubbleChart(allStocksData);
+        });
+    }
 
-    document.getElementById('speed-control').addEventListener('input', (event) => {
-        animationSpeed = parseInt(event.target.value);
-        document.getElementById('speed-value').textContent = `${animationSpeed}ms`;
-        if (bubbleAnimationInterval) {
-            clearInterval(bubbleAnimationInterval);
-            startAnimationLoop();
-        }
-    });
+    const stockSelect = document.getElementById('stock-select');
+    if (stockSelect) {
+        stockSelect.addEventListener('change', (event) => selectStockByCode(event.target.value));
+    }
 
-    document.getElementById('date-slider').addEventListener('input', (event) => {
-        if (bubbleAnimationInterval) {
-            clearInterval(bubbleAnimationInterval);
-            bubbleAnimationInterval = null;
-            document.getElementById('play-bubble').textContent = '재생';
-        }
-        const index = parseInt(event.target.value);
-        if (filteredBubbleDates[index]) {
-            currentBubbleDateIndex = bubbleDates.indexOf(filteredBubbleDates[index]);
-            updateBubbleChart(filteredBubbleDates[index], 100);
-        }
-    });
+    const playBtn = document.getElementById('play-bubble');
+    if (playBtn) playBtn.addEventListener('click', toggleBubbleAnimation);
+
+    const speedSlider = document.getElementById('speed-control');
+    if (speedSlider) {
+        speedSlider.addEventListener('input', (event) => {
+            animationSpeed = parseInt(event.target.value);
+            const speedVal = document.getElementById('speed-value');
+            if (speedVal) speedVal.textContent = `${animationSpeed}ms`;
+            if (bubbleAnimationInterval) {
+                clearInterval(bubbleAnimationInterval);
+                startAnimationLoop();
+            }
+        });
+    }
+
+    const dateSlider = document.getElementById('date-slider');
+    if (dateSlider) {
+        dateSlider.addEventListener('input', (event) => {
+            if (bubbleAnimationInterval) {
+                clearInterval(bubbleAnimationInterval);
+                bubbleAnimationInterval = null;
+                const playBtn = document.getElementById('play-bubble');
+                if (playBtn) playBtn.textContent = '재생';
+            }
+            const index = parseInt(event.target.value);
+            if (filteredBubbleDates && filteredBubbleDates[index]) {
+                currentBubbleDateIndex = bubbleDates.indexOf(filteredBubbleDates[index]);
+                updateBubbleChart(filteredBubbleDates[index], 100);
+            }
+        });
+    }
 });
 
 function toggleBubbleAnimation() {
     const btn = document.getElementById('play-bubble');
+    if (!btn) return;
+
     if (bubbleAnimationInterval) {
         clearInterval(bubbleAnimationInterval);
         bubbleAnimationInterval = null;
@@ -168,6 +231,11 @@ function startAnimationLoop() {
     bubbleAnimationInterval = setInterval(() => {
         currentBubbleDateIndex++;
         
+        if (!filteredBubbleDates || filteredBubbleDates.length === 0) {
+            clearInterval(bubbleAnimationInterval);
+            return;
+        }
+
         const lastValidDate = filteredBubbleDates[filteredBubbleDates.length - 1];
         if (currentBubbleDateIndex >= bubbleDates.length || bubbleDates[currentBubbleDateIndex] > lastValidDate) {
             currentBubbleDateIndex = bubbleDates.indexOf(filteredBubbleDates[0]);
@@ -177,26 +245,32 @@ function startAnimationLoop() {
         if (date) {
             updateBubbleChart(date, animationSpeed);
             const sliderIdx = filteredBubbleDates.indexOf(date);
-            if (sliderIdx !== -1) document.getElementById('date-slider').value = sliderIdx;
+            const slider = document.getElementById('date-slider');
+            if (sliderIdx !== -1 && slider) slider.value = sliderIdx;
         }
     }, animationSpeed);
 }
 
 function updateBubbleChart(date, duration) {
     if (!bubbleChart) return;
-    const startDate = document.getElementById('bubble-start-date').value;
+    const bubbleStartEl = document.getElementById('bubble-start-date');
+    const startDate = bubbleStartEl ? bubbleStartEl.value : (bubbleDates[0] || "");
     const bubbleData = getBubbleDataForDateRange(allStocksData, startDate, date);
     
     const animDuration = Math.max(duration * 0.9, 50);
     
-    bubbleChart.series[0].setData(bubbleData, true, { 
-        duration: animDuration, 
-        easing: 'linear' 
-    });
-    document.getElementById('current-bubble-date').textContent = date;
+    if (bubbleChart.series && bubbleChart.series[0]) {
+        bubbleChart.series[0].setData(bubbleData, true, { 
+            duration: animDuration, 
+            easing: 'linear' 
+        });
+    }
+    const dateDisplay = document.getElementById('current-bubble-date');
+    if (dateDisplay) dateDisplay.textContent = date;
 }
 
 function getBubbleDataForDateRange(stocks, startDate, currentDate) {
+    if (!Array.isArray(stocks)) return [];
     return stocks.filter(s => s.code !== '^NDX').map(stock => {
         const history = stock.historicalData;
         if (!history) return null;
@@ -231,15 +305,22 @@ function selectStockByCode(selectedCode) {
 }
 
 function renderBubbleChart(stocks) {
+    if (!Array.isArray(stocks)) return;
+    
     bubbleDates = [...new Set(stocks.flatMap(s => s.historicalData ? s.historicalData.map(d => d.Date) : []))].sort();
-    const startDate = document.getElementById('bubble-start-date').value || bubbleDates[0];
+    if (bubbleDates.length === 0) return;
+
+    const bubbleStartEl = document.getElementById('bubble-start-date');
+    const startDate = bubbleStartEl ? bubbleStartEl.value : bubbleDates[0];
     
     filteredBubbleDates = bubbleDates.filter(d => d >= startDate);
-    if (filteredBubbleDates.length === 0) return;
+    if (filteredBubbleDates.length === 0) filteredBubbleDates = [bubbleDates[bubbleDates.length-1]];
 
     const slider = document.getElementById('date-slider');
-    slider.max = filteredBubbleDates.length - 1;
-    slider.value = 0;
+    if (slider) {
+        slider.max = Math.max(filteredBubbleDates.length - 1, 0);
+        slider.value = 0;
+    }
 
     const startMarketCaps = stocks.filter(s => s.code !== '^NDX').map(stock => {
         const startIdx = stock.historicalData ? stock.historicalData.findIndex(d => d.Date >= startDate) : -1;
@@ -251,8 +332,8 @@ function renderBubbleChart(stocks) {
 
     currentBubbleDateIndex = bubbleDates.indexOf(filteredBubbleDates[0]);
     
-    // 초기화 시 애니메이션 없이 즉시 갱신
-    updateBubbleChart(filteredBubbleDates[0], 0);
+    const container = document.getElementById('bubble-container');
+    if (!container) return;
 
     bubbleChart = Highcharts.chart('bubble-container', {
         chart: { 
@@ -282,7 +363,7 @@ function renderBubbleChart(stocks) {
             headerFormat: '<table style="width:150px">',
             pointFormat: '<tr><th colspan="2" style="font-size:1.1em; padding-bottom:5px">{point.name}</th></tr>' +
                          '<tr><td style="color:#666">수익률:</td><td style="text-align:right"><b>{point.x}%</b></td></tr>' +
-                         '<tr><td style="color:#666">규모지수:</td><td style="text-align:right">{point.y}</td></tr>',
+                         '<tr><td style="color:#666">추정시총:</td><td style="text-align:right">{point.y}</td></tr>',
             footerFormat: '</table>'
         },
         plotOptions: {
@@ -298,7 +379,7 @@ function renderBubbleChart(stocks) {
                     events: { 
                         click: function() { 
                             const analysisTabBtn = document.querySelectorAll(".tab-link")[1];
-                            openTab({currentTarget: analysisTabBtn}, 'analysis-tab'); 
+                            window.openTab({currentTarget: analysisTabBtn}, 'analysis-tab'); 
                             selectStockByCode(this.code); 
                         } 
                     } 
@@ -324,22 +405,29 @@ function populateStockSelect(stocks) {
 }
 
 function updateStockDisplay(stock) {
-    document.getElementById('stock-name').textContent = stock.name;
-    document.getElementById('stock-code').textContent = stock.code;
-    document.getElementById('stock-select').value = stock.code;
+    const nameEl = document.getElementById('stock-name');
+    const codeEl = document.getElementById('stock-code');
+    const selectEl = document.getElementById('stock-select');
+    if (nameEl) nameEl.textContent = stock.name;
+    if (codeEl) codeEl.textContent = stock.code;
+    if (selectEl) selectEl.value = stock.code;
 }
 
 function setTimeframe(timeframe) {
     document.querySelectorAll('#analysis-tab .controls button').forEach(button => button.classList.remove('active'));
     const btnId = `timeframe-${timeframe.toLowerCase()}`;
-    if(document.getElementById(btnId)) document.getElementById(btnId).classList.add('active');
+    const btn = document.getElementById(btnId);
+    if(btn) btn.classList.add('active');
     currentChartTimeframe = timeframe;
     if (currentStock) renderChart(currentStock, currentChartTimeframe);
 }
 
 function renderChart(stock, timeframe) {
-    const startDate = document.getElementById('start-date').value;
-    const endDate = document.getElementById('end-date').value;
+    const startDateEl = document.getElementById('start-date');
+    const endDateEl = document.getElementById('end-date');
+    const startDate = startDateEl ? startDateEl.value : "";
+    const endDate = endDateEl ? endDateEl.value : "";
+    
     if (!stock.historicalData) return;
     
     let filteredData = stock.historicalData.filter(d => {
@@ -347,10 +435,15 @@ function renderChart(stock, timeframe) {
         if (endDate && d.Date > endDate) return false;
         return true;
     });
+    
     let dataToRender = timeframe === 'Weekly' ? aggregateToWeekly(filteredData) : (timeframe === 'Monthly' ? aggregateToMonthly(filteredData) : filteredData);
     dataToRender.sort((a, b) => new Date(a.Date) - new Date(b.Date));
     const ohlc = dataToRender.map(d => [new Date(d.Date).getTime(), d.Open, d.High, d.Low, d.Close]);
     const volume = dataToRender.map(d => [new Date(d.Date).getTime(), d.Volume]);
+    
+    const container = document.getElementById('container');
+    if (!container) return;
+
     stockChart = Highcharts.stockChart('container', {
         rangeSelector: { enabled: false },
         title: { text: `${stock.name} 주가 분석` },
