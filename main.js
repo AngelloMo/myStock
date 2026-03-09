@@ -1,6 +1,10 @@
 let allStocksData = [];
 let currentStock = null;
 let currentChartTimeframe = 'Daily'; // Default timeframe
+let bubbleChart = null;
+let bubbleDates = [];
+let currentBubbleDateIndex = 0;
+let bubbleAnimationInterval = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Fetch stock.json
@@ -90,7 +94,79 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedCode = event.target.value;
         selectStockByCode(selectedCode);
     });
+
+    // Bubble animation play button
+    document.getElementById('play-bubble').addEventListener('click', toggleBubbleAnimation);
 });
+
+function toggleBubbleAnimation() {
+    const btn = document.getElementById('play-bubble');
+    if (bubbleAnimationInterval) {
+        clearInterval(bubbleAnimationInterval);
+        bubbleAnimationInterval = null;
+        btn.textContent = '재생 (Play)';
+    } else {
+        // Filter dates based on selected range
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+        
+        const filteredDates = bubbleDates.filter(d => {
+            if (startDate && d < startDate) return false;
+            if (endDate && d > endDate) return false;
+            return true;
+        });
+
+        if (filteredDates.length === 0) return;
+
+        // If current date is outside range or at the end, reset to start of range
+        const currentDate = bubbleDates[currentBubbleDateIndex];
+        if (currentDate < filteredDates[0] || currentDate >= filteredDates[filteredDates.length - 1]) {
+            currentBubbleDateIndex = bubbleDates.indexOf(filteredDates[0]);
+        }
+
+        btn.textContent = '일시정지 (Pause)';
+        
+        // Update immediately to the start date if we just reset
+        updateBubbleChart(bubbleDates[currentBubbleDateIndex]);
+
+        bubbleAnimationInterval = setInterval(() => {
+            currentBubbleDateIndex++;
+            if (currentBubbleDateIndex >= bubbleDates.length || (endDate && bubbleDates[currentBubbleDateIndex] > endDate)) {
+                // Wrap around or stop at range end
+                const firstValidDate = startDate ? bubbleDates.find(d => d >= startDate) : bubbleDates[0];
+                currentBubbleDateIndex = bubbleDates.indexOf(firstValidDate);
+            }
+            updateBubbleChart(bubbleDates[currentBubbleDateIndex]);
+        }, 500); // 500ms interval for movement
+    }
+}
+
+function updateBubbleChart(date) {
+    if (!bubbleChart) return;
+    const bubbleData = getBubbleDataForDate(allStocksData, date);
+    bubbleChart.series[0].setData(bubbleData);
+    document.getElementById('current-bubble-date').textContent = date;
+}
+
+function getBubbleDataForDate(stocks, date) {
+    return stocks.filter(s => s.code !== '^NDX').map(stock => {
+        const history = stock.historicalData;
+        const index = history.findIndex(d => d.Date === date);
+        if (index < 1) return null;
+        
+        const current = history[index];
+        const prev = history[index - 1];
+        const changePercent = ((current.Close - prev.Close) / prev.Close) * 100;
+        
+        return {
+            x: parseFloat(changePercent.toFixed(2)),
+            y: current.Volume,
+            z: current.Volume,
+            name: stock.name,
+            code: stock.code
+        };
+    }).filter(d => d !== null);
+}
 
 function selectStockByCode(selectedCode) {
     currentStock = allStocksData.find(stock => stock.code === selectedCode);
@@ -111,28 +187,22 @@ function selectStockByCode(selectedCode) {
 }
 
 function renderBubbleChart(stocks) {
-    const bubbleData = stocks.filter(s => s.code !== '^NDX').map(stock => {
-        const history = stock.historicalData;
-        if (history.length < 2) return null;
-        
-        const latest = history[history.length - 1];
-        const prev = history[history.length - 2];
-        const changePercent = ((latest.Close - prev.Close) / prev.Close) * 100;
-        
-        return {
-            x: parseFloat(changePercent.toFixed(2)),
-            y: latest.Volume,
-            z: latest.Volume,
-            name: stock.name,
-            code: stock.code
-        };
-    }).filter(d => d !== null);
+    // Get all unique dates from all stocks
+    bubbleDates = [...new Set(stocks.flatMap(s => s.historicalData.map(d => d.Date)))].sort();
+    currentBubbleDateIndex = bubbleDates.length - 1;
+    const initialDate = bubbleDates[currentBubbleDateIndex];
+    
+    const bubbleData = getBubbleDataForDate(stocks, initialDate);
+    document.getElementById('current-bubble-date').textContent = initialDate;
 
-    Highcharts.chart('bubble-container', {
+    bubbleChart = Highcharts.chart('bubble-container', {
         chart: {
             type: 'bubble',
             plotBorderWidth: 1,
-            zoomType: 'xy'
+            zoomType: 'xy',
+            animation: {
+                duration: 500 // Smooth transition between dates
+            }
         },
         title: {
             text: ''
@@ -159,7 +229,9 @@ function renderBubbleChart(stocks) {
                     text: '보합'
                 },
                 zIndex: 3
-            }]
+            }],
+            min: -10, // Fixed axes for better "moving" feel
+            max: 10
         },
         yAxis: {
             startOnTick: false,
@@ -193,6 +265,9 @@ function renderBubbleChart(stocks) {
                             selectStockByCode(this.code);
                         }
                     }
+                },
+                animation: {
+                    duration: 500
                 }
             }
         },
