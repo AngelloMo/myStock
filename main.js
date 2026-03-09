@@ -34,8 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
             populateStockSelect(allStocksData);
 
             // 3. Render Bubble Chart for all stocks
-            renderBubbleChart(allStocksData);
-
+            // Initial render will use default date range set in the next block
+            
             // Select NASDAQ 100 Index by default if available, otherwise select the first stock
             if (allStocksData.length > 0) {
                 const ndxIndex = allStocksData.findIndex(stock => stock.code === '^NDX');
@@ -62,13 +62,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 updateStockDisplay(currentStock);
                 renderChart(currentStock, currentChartTimeframe);
                 
-                // Update bubble chart to the start of the selected range
-                const startDate = document.getElementById('start-date').value;
-                const startIndex = bubbleDates.indexOf(bubbleDates.find(d => d >= startDate));
-                if (startIndex !== -1) {
-                    currentBubbleDateIndex = startIndex;
-                    updateBubbleChart(bubbleDates[currentBubbleDateIndex]);
-                }
+                // Now render bubble chart with correct initial start date
+                renderBubbleChart(allStocksData);
             }
         })
         .catch(error => {
@@ -106,13 +101,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Date range change functionality
     document.getElementById('start-date').addEventListener('change', () => {
         if (currentStock) renderChart(currentStock, currentChartTimeframe);
-        // Sync bubble chart to new start date
-        const startDate = document.getElementById('start-date').value;
-        const startIndex = bubbleDates.indexOf(bubbleDates.find(d => d >= startDate));
-        if (startIndex !== -1) {
-            currentBubbleDateIndex = startIndex;
-            updateBubbleChart(bubbleDates[currentBubbleDateIndex]);
-        }
+        // Re-render bubble chart to update axes based on new start date
+        renderBubbleChart(allStocksData);
     });
     document.getElementById('end-date').addEventListener('change', () => {
         if (currentStock) renderChart(currentStock, currentChartTimeframe);
@@ -199,7 +189,6 @@ function getBubbleDataForDateRange(stocks, startDate, currentDate) {
         const changePercent = ((current.Close - base.Close) / base.Close) * 100;
         
         // Using average Volume * Price as a simple proxy for Market Cap relative scale
-        // In a real app, we would use actual Market Cap data.
         const marketCapProxy = current.Volume * current.Close;
 
         return {
@@ -234,18 +223,27 @@ function selectStockByCode(selectedCode) {
 function renderBubbleChart(stocks) {
     bubbleDates = [...new Set(stocks.flatMap(s => s.historicalData.map(d => d.Date)))].sort();
     
-    // Find global min/max for axes stability
-    // For X (Return): We can assume a reasonable range or calculate it
-    // For Y (Market Cap Proxy): We need to know the range
-    const allProxies = stocks.flatMap(s => s.historicalData.map(d => d.Volume * d.Close)).filter(v => v > 0);
-    const minProxy = Math.min(...allProxies);
-    const maxProxy = Math.max(...allProxies);
-
-    currentBubbleDateIndex = bubbleDates.length - 1;
-    const initialDate = bubbleDates[currentBubbleDateIndex];
     const startDate = document.getElementById('start-date') ? document.getElementById('start-date').value : bubbleDates[0];
     
-    const bubbleData = getBubbleDataForDateRange(stocks, startDate || bubbleDates[0], initialDate);
+    // Find proxies at the EXACT start date (or the first available date >= start date)
+    const startProxies = stocks.filter(s => s.code !== '^NDX').map(stock => {
+        const startIdx = stock.historicalData.findIndex(d => d.Date >= startDate);
+        if (startIdx === -1) return 0;
+        const base = stock.historicalData[startIdx];
+        return base.Volume * base.Close;
+    }).filter(v => v > 0);
+
+    const maxStartProxy = startProxies.length > 0 ? Math.max(...startProxies) : 1000000;
+    const minProxy = startProxies.length > 0 ? Math.min(...startProxies) : 1;
+
+    // Y-axis max is twice the max proxy at start date
+    const yMax = maxStartProxy * 2;
+
+    currentBubbleDateIndex = bubbleDates.indexOf(bubbleDates.find(d => d >= startDate));
+    if (currentBubbleDateIndex === -1) currentBubbleDateIndex = 0;
+    
+    const initialDate = bubbleDates[currentBubbleDateIndex];
+    const bubbleData = getBubbleDataForDateRange(stocks, startDate, initialDate);
     document.getElementById('current-bubble-date').textContent = initialDate;
 
     bubbleChart = Highcharts.chart('bubble-container', {
@@ -282,15 +280,15 @@ function renderBubbleChart(stocks) {
                 zIndex: 3
             }],
             min: -50,
-            max: 100
+            max: 200 // Fixed max to 200% as requested
         },
         yAxis: {
-            type: 'logarithmic', // Log scale as requested
+            type: 'logarithmic',
             title: {
                 text: '시가총액 규모 (Log Scale Proxy)'
             },
-            min: minProxy,
-            max: maxProxy * 1.2
+            min: minProxy / 2,
+            max: yMax // Twice the start date max proxy
         },
         tooltip: {
             useHTML: true,
@@ -334,6 +332,7 @@ function renderBubbleChart(stocks) {
 
 function populateStockSelect(stocks) {
     const selectElement = document.getElementById('stock-select');
+    if (!selectElement) return;
     selectElement.innerHTML = '';
     stocks.forEach(stock => {
         const option = document.createElement('option');
