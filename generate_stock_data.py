@@ -8,7 +8,7 @@ import csv
 def generate_stock_data():
     # Expanded list of major NASDAQ 100 components + the index itself
     stock_codes = [
-        {'name': 'NASDAQ 100 Index', 'code': '^ndx'},
+        {'name': '나스닥 100 지수 (NASDAQ 100 Index)', 'code': '^ndx'},
         {'name': 'Apple Inc.', 'code': 'aapl.us'},
         {'name': 'Microsoft Corporation', 'code': 'msft.us'},
         {'name': 'Amazon.com, Inc.', 'code': 'amzn.us'},

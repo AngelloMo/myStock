@@ -20,9 +20,17 @@ document.addEventListener('DOMContentLoaded', () => {
             // 2. Populate stock selection dropdown
             populateStockSelect(allStocksData);
 
-            // Select the first stock by default
+            // Select NASDAQ 100 Index by default if available, otherwise select the first stock
             if (allStocksData.length > 0) {
-                currentStock = allStocksData[0];
+                const ndxIndex = allStocksData.findIndex(stock => stock.code === '^NDX');
+                if (ndxIndex !== -1) {
+                    currentStock = allStocksData[ndxIndex];
+                } else {
+                    currentStock = allStocksData[0];
+                }
+                
+                // Explicitly set the dropdown value and update display
+                document.getElementById('stock-select').value = currentStock.code;
                 updateStockDisplay(currentStock);
                 renderChart(currentStock, currentChartTimeframe);
             }
@@ -261,7 +269,11 @@ function renderChart(stock, timeframe) {
             // We disable it here as we are doing manual aggregation
             dataGrouping: {
                 enabled: false
-            }
+            },
+            color: '#0000FF', // 하락 시 파란색 (Blue)
+            lineColor: '#0000FF',
+            upColor: '#FF0000', // 상승 시 빨간색 (Red)
+            upLineColor: '#FF0000'
         }, {
             type: 'column',
             name: 'Volume',
