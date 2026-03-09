@@ -4,13 +4,13 @@ let currentChartTimeframe = 'Daily';
 let bubbleChart = null;
 let stockChart = null;
 let bubbleDates = [];
+let filteredBubbleDates = [];
 let currentBubbleDateIndex = 0;
 let bubbleAnimationInterval = null;
 let stockColors = {};
 let animationSpeed = 150;
 
-// 대략적인 시가총액 가중치 (나스닥 100 주요 종목 시총 비중에 따른 상대적 주식수 프록시)
-// 실제 정밀한 시총을 위해 종목별로 대략적인 상장주식수 비율을 적용합니다.
+// 대략적인 시가총액 가중치 프록시
 const sharesProxy = {
     'AAPL': 150, 'MSFT': 70, 'AMZN': 100, 'GOOGL': 60, 'GOOG': 60,
     'META': 25, 'NVDA': 240, 'TSLA': 30, 'AVGO': 4, 'PEP': 13,
@@ -34,72 +34,53 @@ const sharesProxy = {
 };
 
 function getMarketCap(stockCode, price) {
-    const shares = sharesProxy[stockCode] || 1; // 목록에 없으면 기본값 1
+    const shares = sharesProxy[stockCode] || 1;
     return price * shares;
 }
 
-// Tab Switch Function
 function openTab(evt, tabName) {
     const tabContents = document.getElementsByClassName("tab-content");
-    for (let i = 0; i < tabContents.length; i++) {
-        tabContents[i].classList.remove("active");
-    }
+    for (let i = 0; i < tabContents.length; i++) tabContents[i].classList.remove("active");
     const tabLinks = document.getElementsByClassName("tab-link");
-    for (let i = 0; i < tabLinks.length; i++) {
-        tabLinks[i].classList.remove("active");
-    }
+    for (let i = 0; i < tabLinks.length; i++) tabLinks[i].classList.remove("active");
     document.getElementById(tabName).classList.add("active");
     evt.currentTarget.classList.add("active");
-
     if (tabName === 'bubble-tab' && bubbleChart) bubbleChart.reflow();
     if (tabName === 'analysis-tab' && stockChart) stockChart.reflow();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     fetch('stock.json')
-        .then(response => {
-            if (!response.ok) throw new Error('stock.json not found.');
-            return response.json();
-        })
+        .then(response => response.json())
         .then(data => {
             allStocksData = data;
-            
             const colors = Highcharts.getOptions().colors;
             allStocksData.filter(s => s.code !== '^NDX').forEach((stock, i) => {
                 stockColors[stock.code] = colors[i % colors.length];
             });
-
             populateStockSelect(allStocksData);
-
             if (allStocksData.length > 0) {
                 const ndxIndex = allStocksData.findIndex(stock => stock.code === '^NDX');
                 currentStock = ndxIndex !== -1 ? allStocksData[ndxIndex] : allStocksData[0];
-                
                 if (currentStock.historicalData && currentStock.historicalData.length > 0) {
                     const sortedData = [...currentStock.historicalData].sort((a, b) => new Date(a.Date) - new Date(b.Date));
-                    
                     document.getElementById('start-date').value = sortedData[0].Date;
                     document.getElementById('end-date').value = sortedData[sortedData.length - 1].Date;
-
                     const startDateObj = new Date(sortedData[sortedData.length - 1].Date);
                     startDateObj.setMonth(startDateObj.getMonth() - 6);
                     const startDateStr = startDateObj.toISOString().split('T')[0];
                     document.getElementById('bubble-start-date').value = startDateStr < sortedData[0].Date ? sortedData[0].Date : startDateStr;
                 }
-
-                document.getElementById('stock-select').value = currentStock.code;
                 updateStockDisplay(currentStock);
                 renderChart(currentStock, currentChartTimeframe);
                 renderBubbleChart(allStocksData);
             }
-        })
-        .catch(error => console.error('Error:', error));
+        });
 
     document.getElementById('stock-search').addEventListener('input', (event) => {
         const query = event.target.value.toLowerCase();
         const filteredStocks = allStocksData.filter(stock => 
-            stock.name.toLowerCase().includes(query) || 
-            stock.code.toLowerCase().includes(query)
+            stock.name.toLowerCase().includes(query) || stock.code.toLowerCase().includes(query)
         );
         populateStockSelect(filteredStocks);
     });
@@ -118,18 +99,25 @@ document.addEventListener('DOMContentLoaded', () => {
         renderBubbleChart(allStocksData);
     });
 
-    document.getElementById('stock-select').addEventListener('change', (event) => {
-        selectStockByCode(event.target.value);
-    });
-
+    document.getElementById('stock-select').addEventListener('change', (event) => selectStockByCode(event.target.value));
     document.getElementById('play-bubble').addEventListener('click', toggleBubbleAnimation);
 
     document.getElementById('speed-control').addEventListener('input', (event) => {
         animationSpeed = parseInt(event.target.value);
         document.getElementById('speed-value').textContent = `${animationSpeed}ms`;
+        if (bubbleAnimationInterval) { toggleBubbleAnimation(); toggleBubbleAnimation(); }
+    });
+
+    document.getElementById('date-slider').addEventListener('input', (event) => {
         if (bubbleAnimationInterval) {
-            toggleBubbleAnimation(); 
-            toggleBubbleAnimation();
+            clearInterval(bubbleAnimationInterval);
+            bubbleAnimationInterval = null;
+            document.getElementById('play-bubble').textContent = '재생 (Play)';
+        }
+        const index = parseInt(event.target.value);
+        if (filteredBubbleDates[index]) {
+            currentBubbleDateIndex = bubbleDates.indexOf(filteredBubbleDates[index]);
+            updateBubbleChart(filteredBubbleDates[index]);
         }
     });
 });
@@ -141,14 +129,11 @@ function toggleBubbleAnimation() {
         bubbleAnimationInterval = null;
         btn.textContent = '재생 (Play)';
     } else {
-        const startDate = document.getElementById('bubble-start-date').value;
-        const filteredDates = bubbleDates.filter(d => !startDate || d >= startDate);
-
-        if (filteredDates.length === 0) return;
-
+        if (filteredBubbleDates.length === 0) return;
+        
         const currentDate = bubbleDates[currentBubbleDateIndex];
-        if (currentDate < filteredDates[0] || currentDate >= filteredDates[filteredDates.length - 1]) {
-            currentBubbleDateIndex = bubbleDates.indexOf(filteredDates[0]);
+        if (currentDate < filteredBubbleDates[0] || currentDate >= filteredBubbleDates[filteredBubbleDates.length - 1]) {
+            currentBubbleDateIndex = bubbleDates.indexOf(filteredBubbleDates[0]);
         }
 
         btn.textContent = '일시정지 (Pause)';
@@ -157,10 +142,12 @@ function toggleBubbleAnimation() {
         bubbleAnimationInterval = setInterval(() => {
             currentBubbleDateIndex++;
             if (currentBubbleDateIndex >= bubbleDates.length) {
-                const firstValidDate = startDate ? bubbleDates.find(d => d >= startDate) : bubbleDates[0];
-                currentBubbleDateIndex = bubbleDates.indexOf(firstValidDate);
+                currentBubbleDateIndex = bubbleDates.indexOf(filteredBubbleDates[0]);
             }
-            updateBubbleChart(bubbleDates[currentBubbleDateIndex]);
+            const date = bubbleDates[currentBubbleDateIndex];
+            updateBubbleChart(date);
+            const sliderIdx = filteredBubbleDates.indexOf(date);
+            if (sliderIdx !== -1) document.getElementById('date-slider').value = sliderIdx;
         }, animationSpeed);
     }
 }
@@ -169,11 +156,7 @@ function updateBubbleChart(date) {
     if (!bubbleChart) return;
     const startDate = document.getElementById('bubble-start-date').value;
     const bubbleData = getBubbleDataForDateRange(allStocksData, startDate, date);
-    
-    bubbleChart.series[0].setData(bubbleData, true, { 
-        duration: animationSpeed,
-        easing: 'linear'
-    });
+    bubbleChart.series[0].setData(bubbleData, true, { duration: animationSpeed, easing: 'linear' });
     document.getElementById('current-bubble-date').textContent = date;
 }
 
@@ -182,117 +165,66 @@ function getBubbleDataForDateRange(stocks, startDate, currentDate) {
         const history = stock.historicalData;
         const currentIdx = history.findIndex(d => d.Date === currentDate);
         const startIdx = history.findIndex(d => d.Date >= startDate);
-        
         if (currentIdx === -1 || startIdx === -1 || currentIdx < startIdx) return null;
-        
         const current = history[currentIdx];
         const base = history[startIdx];
         const changePercent = ((current.Close - base.Close) / base.Close) * 100;
-        
-        // 올바른 시가총액 로직: 주가 * 주식수프록시
         const marketCap = getMarketCap(stock.code, current.Close);
-
         return {
-            id: stock.code,
-            x: parseFloat(changePercent.toFixed(2)),
-            y: marketCap,
-            z: current.Volume,
-            name: stock.name,
-            code: stock.code,
-            color: stockColors[stock.code]
+            id: stock.code, x: parseFloat(changePercent.toFixed(2)), y: marketCap, z: current.Volume,
+            name: stock.name, code: stock.code, color: stockColors[stock.code]
         };
     }).filter(d => d !== null);
 }
 
 function selectStockByCode(selectedCode) {
     currentStock = allStocksData.find(stock => stock.code === selectedCode);
-    if (currentStock) {
-        updateStockDisplay(currentStock);
-        renderChart(currentStock, currentChartTimeframe);
-    }
+    if (currentStock) { updateStockDisplay(currentStock); renderChart(currentStock, currentChartTimeframe); }
 }
 
 function renderBubbleChart(stocks) {
     bubbleDates = [...new Set(stocks.flatMap(s => s.historicalData.map(d => d.Date)))].sort();
     const startDate = document.getElementById('bubble-start-date').value || bubbleDates[0];
-    
+    filteredBubbleDates = bubbleDates.filter(d => d >= startDate);
+    const slider = document.getElementById('date-slider');
+    slider.max = filteredBubbleDates.length - 1;
+    slider.value = 0;
+
     const startMarketCaps = stocks.filter(s => s.code !== '^NDX').map(stock => {
         const startIdx = stock.historicalData.findIndex(d => d.Date >= startDate);
-        if (startIdx === -1) return 0;
-        return getMarketCap(stock.code, stock.historicalData[startIdx].Close);
+        return startIdx === -1 ? 0 : getMarketCap(stock.code, stock.historicalData[startIdx].Close);
     }).filter(v => v > 0);
 
     const maxStartMC = startMarketCaps.length > 0 ? Math.max(...startMarketCaps) : 1000000;
     const minStartMC = startMarketCaps.length > 0 ? Math.min(...startMarketCaps) : 1;
 
-    currentBubbleDateIndex = bubbleDates.indexOf(bubbleDates.find(d => d >= startDate));
-    if (currentBubbleDateIndex === -1) currentBubbleDateIndex = 0;
-    
-    const initialDate = bubbleDates[currentBubbleDateIndex];
-    const bubbleData = getBubbleDataForDateRange(stocks, startDate, initialDate);
-    document.getElementById('current-bubble-date').textContent = initialDate;
+    currentBubbleDateIndex = bubbleDates.indexOf(filteredBubbleDates[0]);
+    updateBubbleChart(filteredBubbleDates[0]);
 
     bubbleChart = Highcharts.chart('bubble-container', {
-        chart: {
-            type: 'bubble',
-            plotBorderWidth: 1,
-            zoomType: 'xy',
-            animation: { 
-                duration: animationSpeed,
-                easing: 'linear'
-            }
-        },
+        chart: { type: 'bubble', plotBorderWidth: 1, zoomType: 'xy', animation: { duration: animationSpeed, easing: 'linear' } },
         title: { text: '' },
         xAxis: {
-            gridLineWidth: 1,
-            title: { text: '기준일 대비 등락률 (%)' },
-            labels: { format: '{value}%' },
-            plotLines: [{
-                color: 'black', dashStyle: 'dot', width: 2, value: 0,
-                label: { rotation: 0, y: 15, style: { fontStyle: 'italic' }, text: '기준점' },
-                zIndex: 3
-            }],
-            min: -100,
-            max: 200
+            gridLineWidth: 1, title: { text: '기준일 대비 등락률 (%)' }, labels: { format: '{value}%' },
+            plotLines: [{ color: 'black', dashStyle: 'dot', width: 2, value: 0, label: { rotation: 0, y: 15, style: { fontStyle: 'italic' }, text: '기준점' }, zIndex: 3 }],
+            min: -100, max: 200
         },
-        yAxis: {
-            type: 'logarithmic',
-            title: { text: '시가총액 규모 (Log Scale)' },
-            min: minStartMC * 0.5, 
-            max: maxStartMC * 5 
-        },
+        yAxis: { type: 'logarithmic', title: { text: '시가총액 규모 (Log Scale)' }, min: minStartMC * 0.5, max: maxStartMC * 10 },
         tooltip: {
-            useHTML: true,
-            headerFormat: '<table>',
-            pointFormat: '<tr><th colspan="2"><h3>{point.name} ({point.code})</h3></th></tr>' +
-                '<tr><th>등락률:</th><td>{point.x}%</td></tr>' +
-                '<tr><th>추정시총:</th><td>{point.y}</td></tr>' +
-                '<tr><th>거래량:</th><td>{point.z}</td></tr>',
-            footerFormat: '</table>',
-            followPointer: true
+            useHTML: true, headerFormat: '<table>',
+            pointFormat: '<tr><th colspan="2"><h3>{point.name} ({point.code})</h3></th></tr><tr><th>등락률:</th><td>{point.x}%</td></tr><tr><th>추정시총:</th><td>{point.y}</td></tr><tr><th>거래량:</th><td>{point.z}</td></tr>',
+            footerFormat: '</table>', followPointer: true
         },
         plotOptions: {
             series: {
-                dataLabels: { 
-                    enabled: true, 
-                    format: '{point.code}', 
-                    style: { fontSize: '10px' },
-                    allowOverlap: false
-                },
+                dataLabels: { enabled: true, format: '{point.code}', style: { fontSize: '10px' }, allowOverlap: false },
                 cursor: 'pointer',
                 point: { events: { click: function() { openTab({currentTarget: document.querySelectorAll(".tab-link")[1]}, 'analysis-tab'); selectStockByCode(this.code); } } },
-                animation: { 
-                    duration: animationSpeed,
-                    easing: 'linear'
-                },
-                marker: { 
-                    fillOpacity: 0.7,
-                    lineWidth: 1,
-                    lineColor: null
-                }
+                animation: { duration: animationSpeed, easing: 'linear' },
+                marker: { fillOpacity: 0.7, lineWidth: 1, lineColor: null }
             }
         },
-        series: [{ name: '종목별 등락', data: bubbleData, colorByPoint: false }]
+        series: [{ name: '종목별 등락', data: getBubbleDataForDateRange(stocks, startDate, filteredBubbleDates[0]), colorByPoint: false }]
     });
 }
 
@@ -315,53 +247,32 @@ function updateStockDisplay(stock) {
 }
 
 function setTimeframe(timeframe) {
-    document.querySelectorAll('#analysis-tab .controls button').forEach(button => {
-        button.classList.remove('active');
-    });
+    document.querySelectorAll('#analysis-tab .controls button').forEach(button => button.classList.remove('active'));
     const btnId = `timeframe-${timeframe.toLowerCase()}`;
     if(document.getElementById(btnId)) document.getElementById(btnId).classList.add('active');
-
     currentChartTimeframe = timeframe;
     if (currentStock) renderChart(currentStock, currentChartTimeframe);
 }
 
 function renderChart(stock, timeframe) {
-    let dataToRender = [];
     const startDate = document.getElementById('start-date').value;
     const endDate = document.getElementById('end-date').value;
-    
     let filteredData = stock.historicalData.filter(d => {
         if (startDate && d.Date < startDate) return false;
         if (endDate && d.Date > endDate) return false;
         return true;
     });
-
-    if (timeframe === 'Weekly') dataToRender = aggregateToWeekly(filteredData);
-    else if (timeframe === 'Monthly') dataToRender = aggregateToMonthly(filteredData);
-    else dataToRender = filteredData;
-
+    let dataToRender = timeframe === 'Weekly' ? aggregateToWeekly(filteredData) : (timeframe === 'Monthly' ? aggregateToMonthly(filteredData) : filteredData);
     dataToRender.sort((a, b) => new Date(a.Date) - new Date(b.Date));
     const ohlc = dataToRender.map(d => [new Date(d.Date).getTime(), d.Open, d.High, d.Low, d.Close]);
     const volume = dataToRender.map(d => [new Date(d.Date).getTime(), d.Volume]);
-
     stockChart = Highcharts.stockChart('container', {
         rangeSelector: { enabled: false },
         title: { text: `${stock.name} 주가 분석` },
-        yAxis: [{
-            labels: { align: 'right', x: -3 },
-            title: { text: '주가' },
-            height: '60%', lineWidth: 2, resize: { enabled: true }
-        }, {
-            labels: { align: 'right', x: -3 },
-            title: { text: '거래량' },
-            top: '65%', height: '35%', offset: 0, lineWidth: 2
-        }],
-        series: [{
-            type: 'candlestick', name: stock.name, id: stock.code, data: ohlc,
-            color: '#0000FF', upColor: '#FF0000'
-        }, {
-            type: 'column', name: 'Volume', data: volume, yAxis: 1
-        }]
+        yAxis: [{ labels: { align: 'right', x: -3 }, title: { text: '주가' }, height: '60%', lineWidth: 2, resize: { enabled: true } },
+                { labels: { align: 'right', x: -3 }, title: { text: '거래량' }, top: '65%', height: '35%', offset: 0, lineWidth: 2 }],
+        series: [{ type: 'candlestick', name: stock.name, id: stock.code, data: ohlc, color: '#0000FF', upColor: '#FF0000' },
+                { type: 'column', name: 'Volume', data: volume, yAxis: 1 }]
     });
 }
 
@@ -373,14 +284,7 @@ function aggregateToWeekly(dailyData) {
         const nextDayDate = index < dailyData.length - 1 ? new Date(dailyData[index + 1].Date) : null;
         if (!nextDayDate || nextDayDate.getDay() === 1) {
             if (currentWeek.length > 0) {
-                weeklyData.push({
-                    Date: currentWeek[currentWeek.length - 1].Date,
-                    Open: currentWeek[0].Open,
-                    High: Math.max(...currentWeek.map(d => d.High)),
-                    Low: Math.min(...currentWeek.map(d => d.Low)),
-                    Close: currentWeek[currentWeek.length - 1].Close,
-                    Volume: currentWeek.reduce((sum, d) => sum + d.Volume, 0)
-                });
+                weeklyData.push({ Date: currentWeek[currentWeek.length - 1].Date, Open: currentWeek[0].Open, High: Math.max(...currentWeek.map(d => d.High)), Low: Math.min(...currentWeek.map(d => d.Low)), Close: currentWeek[currentWeek.length - 1].Close, Volume: currentWeek.reduce((sum, d) => sum + d.Volume, 0) });
             }
             currentWeek = [];
         }
@@ -396,14 +300,7 @@ function aggregateToMonthly(dailyData) {
         const nextDayDate = index < dailyData.length - 1 ? new Date(dailyData[index + 1].Date) : null;
         if (!nextDayDate || nextDayDate.getMonth() !== new Date(day.Date).getMonth()) {
             if (currentMonth.length > 0) {
-                monthlyData.push({
-                    Date: currentMonth[currentMonth.length - 1].Date,
-                    Open: currentMonth[0].Open,
-                    High: Math.max(...currentMonth.map(d => d.High)),
-                    Low: Math.min(...currentMonth.map(d => d.Low)),
-                    Close: currentMonth[currentMonth.length - 1].Close,
-                    Volume: currentMonth.reduce((sum, d) => sum + d.Volume, 0)
-                });
+                monthlyData.push({ Date: currentMonth[currentMonth.length - 1].Date, Open: currentMonth[0].Open, High: Math.max(...currentMonth.map(d => d.High)), Low: Math.min(...currentMonth.map(d => d.Low)), Close: currentMonth[currentMonth.length - 1].Close, Volume: currentMonth.reduce((sum, d) => sum + d.Volume, 0) });
             }
             currentMonth = [];
         }
