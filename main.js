@@ -29,6 +29,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     currentStock = allStocksData[0];
                 }
                 
+                // Set initial date range values
+                if (currentStock.historicalData && currentStock.historicalData.length > 0) {
+                    const sortedData = [...currentStock.historicalData].sort((a, b) => new Date(a.Date) - new Date(b.Date));
+                    document.getElementById('start-date').value = sortedData[0].Date;
+                    document.getElementById('end-date').value = sortedData[sortedData.length - 1].Date;
+                }
+
                 // Explicitly set the dropdown value and update display
                 document.getElementById('stock-select').value = currentStock.code;
                 updateStockDisplay(currentStock);
@@ -67,11 +74,25 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('timeframe-weekly').addEventListener('click', () => setTimeframe('Weekly'));
     document.getElementById('timeframe-monthly').addEventListener('click', () => setTimeframe('Monthly'));
 
+    // Date range change functionality
+    document.getElementById('start-date').addEventListener('change', () => {
+        if (currentStock) renderChart(currentStock, currentChartTimeframe);
+    });
+    document.getElementById('end-date').addEventListener('change', () => {
+        if (currentStock) renderChart(currentStock, currentChartTimeframe);
+    });
+
     // Handle stock selection changes
     document.getElementById('stock-select').addEventListener('change', (event) => {
         const selectedCode = event.target.value;
         currentStock = allStocksData.find(stock => stock.code === selectedCode);
         if (currentStock) {
+            // Update dates for new stock
+            if (currentStock.historicalData && currentStock.historicalData.length > 0) {
+                const sortedData = [...currentStock.historicalData].sort((a, b) => new Date(a.Date) - new Date(b.Date));
+                document.getElementById('start-date').value = sortedData[0].Date;
+                document.getElementById('end-date').value = sortedData[sortedData.length - 1].Date;
+            }
             updateStockDisplay(currentStock);
             renderChart(currentStock, currentChartTimeframe);
         }
@@ -196,21 +217,35 @@ function renderChart(stock, timeframe) {
     let dataToRender = [];
     let processedStockName = stock.name;
 
+    // Filter by Date Range
+    const startDate = document.getElementById('start-date').value;
+    const endDate = document.getElementById('end-date').value;
+    
+    let filteredData = stock.historicalData;
+    if (startDate || endDate) {
+        filteredData = stock.historicalData.filter(d => {
+            let matches = true;
+            if (startDate && d.Date < startDate) matches = false;
+            if (endDate && d.Date > endDate) matches = false;
+            return matches;
+        });
+    }
+
     switch (timeframe) {
         case 'Daily':
-            dataToRender = stock.historicalData;
+            dataToRender = filteredData;
             processedStockName += ' (일봉)';
             break;
         case 'Weekly':
-            dataToRender = aggregateToWeekly(stock.historicalData);
+            dataToRender = aggregateToWeekly(filteredData);
             processedStockName += ' (주봉)';
             break;
         case 'Monthly':
-            dataToRender = aggregateToMonthly(stock.historicalData);
+            dataToRender = aggregateToMonthly(filteredData);
             processedStockName += ' (월봉)';
             break;
         default:
-            dataToRender = stock.historicalData;
+            dataToRender = filteredData;
             processedStockName += ' (일봉)';
     }
 
@@ -225,7 +260,7 @@ function renderChart(stock, timeframe) {
             height: 500
         },
         rangeSelector: {
-            selected: 1 // 1 month
+            enabled: false // Using our own date inputs
         },
         title: {
             text: `${processedStockName} 주가`

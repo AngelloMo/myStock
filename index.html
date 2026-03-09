@@ -16,10 +16,15 @@
         <input type="text" id="stock-search" placeholder="종목명 또는 티커 검색..." style="margin-right: 10px;">
         <select id="stock-select"></select>
 
-        <label>기간 설정:</label>
+        <label>차트 종류:</label>
         <button id="timeframe-daily" class="active">일봉</button>
         <button id="timeframe-weekly">주봉</button>
         <button id="timeframe-monthly">월봉</button>
+
+        <label style="margin-left: 20px;">조회 기간:</label>
+        <input type="date" id="start-date">
+        <span>~</span>
+        <input type="date" id="end-date">
     </div>
     <div id="recommendation">
         <h2>선택된 종목: <span id="stock-name"></span></h2>

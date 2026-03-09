@@ -17,29 +17,37 @@ h1 {
     background-color: #fff;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
 }
 
 .controls label {
-    margin-right: 10px;
     font-weight: bold;
 }
 
 .controls select,
 .controls button,
-.controls input[type="text"] {
+.controls input[type="text"],
+.controls input[type="date"] {
     padding: 8px 12px;
-    margin: 0 5px;
     border: 1px solid #ccc;
     border-radius: 5px;
     background-color: #eee;
     cursor: pointer;
-    font-size: 1em;
+    font-size: 0.95em;
+}
+
+.controls input[type="text"],
+.controls input[type="date"] {
+    cursor: text;
+    background-color: #fff;
 }
 
 .controls input[type="text"] {
-    cursor: text;
-    background-color: #fff;
-    width: 200px;
+    width: 180px;
 }
 
 .controls button.active {
@@ -73,7 +81,7 @@ h1 {
 }
 
 #container {
-    height: 500px; /* Increased height for better visibility */
+    height: 500px;
     min-width: 310px;
     margin: 0 auto;
     background-color: #fff;
@@ -82,14 +90,15 @@ h1 {
 }
 
 /* Responsive adjustments */
-@media (max-width: 768px) {
+@media (max-width: 992px) {
     .controls {
         flex-direction: column;
-        align-items: center;
     }
-    .controls select,
-    .controls button {
-        margin: 5px 0;
-        width: 80%; /* Adjust width for better touch targets */
+    .controls > * {
+        width: 90%;
+        max-width: 300px;
+    }
+    .controls label {
+        margin-top: 10px;
     }
 }
