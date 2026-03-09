@@ -15,12 +15,17 @@
 
     <!-- 버블 차트 섹션 -->
     <div id="bubble-section">
-        <h2 style="text-align: center;">나스닥 100 종목 현황 (등락률 vs 거래량)</h2>
+        <h2 style="text-align: center;">나스닥 100 종목 현황 (시작일 대비 등락률 vs 시가총액)</h2>
         <div class="bubble-controls" style="text-align: center; margin-bottom: 10px;">
             <button id="play-bubble">재생 (Play)</button>
             <span id="current-bubble-date" style="margin-left: 15px; font-weight: bold; font-size: 1.2em;"></span>
+            <div style="margin-top: 10px;">
+                <label for="speed-control">속도 조절:</label>
+                <input type="range" id="speed-control" min="50" max="1000" value="150" step="50">
+                <span id="speed-value">150ms</span>
+            </div>
         </div>
-        <div id="bubble-container" style="height: 500px; margin-bottom: 30px;"></div>
+        <div id="bubble-container" style="height: 600px; margin-bottom: 30px;"></div>
     </div>
 
     <div class="controls">
