@@ -1,156 +1,152 @@
-.bubble-controls {
+body {
+    font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f0f2f5;
+    color: #1c1e21;
+}
+
+h1 {
     text-align: center;
-    margin-bottom: 15px;
-    padding: 10px;
-    background-color: #f9f9f9;
-    border-radius: 5px;
+    color: #1877f2;
+    margin-bottom: 20px;
+}
+
+/* Tab Styles */
+.tabs {
     display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.tab-link {
+    padding: 12px 30px;
+    border: none;
+    background-color: #fff;
+    cursor: pointer;
+    font-size: 1.1em;
+    font-weight: bold;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.3s;
+}
+
+.tab-link.active {
+    background-color: #1877f2;
+    color: white;
+}
+
+.tab-link:hover:not(.active) {
+    background-color: #e4e6eb;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Bubble Chart Specific Styles */
+#bubble-section {
+    background-color: #fff;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.bubble-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 30px;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.control-group label {
+    font-weight: bold;
+}
+
+#play-bubble {
+    padding: 10px 25px;
+    background-color: #42b72a;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 1em;
+}
+
+#play-bubble:hover {
+    background-color: #36a420;
+}
+
+#current-bubble-date {
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    font-size: 1.3em;
+    color: #1c1e21;
+    min-width: 130px;
+    text-align: center;
+}
+
+/* Analysis Tab Styles */
+.controls {
+    margin-bottom: 20px;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    display: flex;
+    flex-wrap: wrap;
     justify-content: center;
     align-items: center;
     gap: 15px;
 }
 
-#play-bubble {
-    padding: 8px 20px;
-    border: 1px solid #007bff;
-    border-radius: 5px;
-    background-color: #007bff;
-    color: white;
-    cursor: pointer;
-    font-size: 1em;
-    font-weight: bold;
-    transition: background-color 0.2s;
-}
-
-#play-bubble:hover {
-    background-color: #0056b3;
-}
-
-#current-bubble-date {
-    font-family: 'Courier New', Courier, monospace;
-    color: #333;
-    min-width: 120px;
-    display: inline-block;
-}
-
-/* Existing styles */
-body {
-    font-family: sans-serif;
-    margin: 2em;
-    background-color: #f4f4f4;
-    color: #333;
-}
-
-h1 {
-    text-align: center;
-    color: #0056b3;
-    margin-bottom: 30px;
-}
-
-#bubble-section {
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    margin-bottom: 30px;
-}
-
-#bubble-section h2 {
-    color: #333;
-    margin-top: 0;
-    margin-bottom: 20px;
-    font-size: 1.5em;
-}
-
-.controls {
-    margin-bottom: 20px;
-    text-align: center;
-    padding: 15px;
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-}
-
-.controls label {
-    font-weight: bold;
-}
-
 .controls select,
 .controls button,
-.controls input[type="text"],
-.controls input[type="date"] {
-    padding: 8px 12px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    background-color: #eee;
-    cursor: pointer;
+.controls input {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
     font-size: 0.95em;
 }
 
-.controls input[type="text"],
-.controls input[type="date"] {
-    cursor: text;
-    background-color: #fff;
-}
-
-.controls input[type="text"] {
-    width: 180px;
-}
-
 .controls button.active {
-    background-color: #007bff;
+    background-color: #1877f2;
     color: white;
-    border-color: #007bff;
-}
-
-.controls button:hover:not(.active) {
-    background-color: #e0e0e0;
+    border-color: #1877f2;
 }
 
 #recommendation {
-    margin-top: 20px;
     text-align: center;
-    padding: 15px;
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    margin-bottom: 20px;
-}
-
-#recommendation h2 {
-    color: #28a745;
-    margin-bottom: 5px;
-}
-
-#recommendation p {
-    font-size: 0.9em;
-    color: #666;
+    margin-bottom: 15px;
 }
 
 #container {
-    height: 500px;
-    min-width: 310px;
-    margin: 0 auto;
     background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
-/* Responsive adjustments */
-@media (max-width: 992px) {
-    .controls {
+@media (max-width: 768px) {
+    .bubble-controls, .controls {
         flex-direction: column;
-    }
-    .controls > * {
-        width: 90%;
-        max-width: 300px;
-    }
-    .controls label {
-        margin-top: 10px;
+        align-items: stretch;
     }
 }
