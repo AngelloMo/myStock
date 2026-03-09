@@ -25,7 +25,8 @@ h1 {
 }
 
 .controls select,
-.controls button {
+.controls button,
+.controls input[type="text"] {
     padding: 8px 12px;
     margin: 0 5px;
     border: 1px solid #ccc;
@@ -33,6 +34,12 @@ h1 {
     background-color: #eee;
     cursor: pointer;
     font-size: 1em;
+}
+
+.controls input[type="text"] {
+    cursor: text;
+    background-color: #fff;
+    width: 200px;
 }
 
 .controls button.active {

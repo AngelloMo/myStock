@@ -1,7 +1,8 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-    <title>KOSPI 200 Stock Recommendation</title>
+    <meta charset="UTF-8">
+    <title>나스닥 100 주가 분석</title>
     <script src="https://code.highcharts.com/stock/highstock.js"></script>
     <script src="https://code.highcharts.com/stock/modules/data.js"></script>
     <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
@@ -9,20 +10,20 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>KOSPI 200 Stock Analysis</h1>
+    <h1>나스닥 100 주가 분석 (NASDAQ 100 Analysis)</h1>
     <div class="controls">
-        <label for="stock-select">Select Stock:</label>
+        <label for="stock-select">종목 선택:</label>
+        <input type="text" id="stock-search" placeholder="종목명 또는 티커 검색..." style="margin-right: 10px;">
         <select id="stock-select"></select>
 
-        <label>Timeframe:</label>
-        <button id="timeframe-daily" class="active">Daily</button>
-        <button id="timeframe-weekly">Weekly</button>
-        <button id="timeframe-monthly">Monthly</button>
+        <label>기간 설정:</label>
+        <button id="timeframe-daily" class="active">일봉</button>
+        <button id="timeframe-weekly">주봉</button>
+        <button id="timeframe-monthly">월봉</button>
     </div>
     <div id="recommendation">
-        <h2>Selected Stock: <span id="stock-name"></span></h2>
-        <p>Code: <span id="stock-code"></span></p>
-        <!-- The reason will be calculated and displayed if needed, or removed -->
+        <h2>선택된 종목: <span id="stock-name"></span></h2>
+        <p>티커: <span id="stock-code"></span></p>
     </div>
     <div id="container"></div>
     <script src="main.js"></script>

@@ -33,6 +33,27 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('stock-code').textContent = '';
         });
 
+    // Stock search functionality
+    document.getElementById('stock-search').addEventListener('input', (event) => {
+        const query = event.target.value.toLowerCase();
+        const filteredStocks = allStocksData.filter(stock => 
+            stock.name.toLowerCase().includes(query) || 
+            stock.code.toLowerCase().includes(query)
+        );
+        populateStockSelect(filteredStocks);
+        
+        // Optionally select the first filtered result automatically
+        if (filteredStocks.length > 0) {
+             const firstStock = filteredStocks[0];
+             // If the current stock is not in the filtered list, update to first filtered stock
+             if (!filteredStocks.some(s => s.code === currentStock.code)) {
+                 currentStock = firstStock;
+                 updateStockDisplay(currentStock);
+                 renderChart(currentStock, currentChartTimeframe);
+             }
+        }
+    });
+
     // 3. Implement timeframe selection
     document.getElementById('timeframe-daily').addEventListener('click', () => setTimeframe('Daily'));
     document.getElementById('timeframe-weekly').addEventListener('click', () => setTimeframe('Weekly'));
@@ -170,19 +191,19 @@ function renderChart(stock, timeframe) {
     switch (timeframe) {
         case 'Daily':
             dataToRender = stock.historicalData;
-            processedStockName += ' (Daily)';
+            processedStockName += ' (일봉)';
             break;
         case 'Weekly':
             dataToRender = aggregateToWeekly(stock.historicalData);
-            processedStockName += ' (Weekly)';
+            processedStockName += ' (주봉)';
             break;
         case 'Monthly':
             dataToRender = aggregateToMonthly(stock.historicalData);
-            processedStockName += ' (Monthly)';
+            processedStockName += ' (월봉)';
             break;
         default:
             dataToRender = stock.historicalData;
-            processedStockName += ' (Daily)';
+            processedStockName += ' (일봉)';
     }
 
     // Ensure dataToRender is sorted by date before mapping for Highcharts
@@ -199,7 +220,7 @@ function renderChart(stock, timeframe) {
             selected: 1 // 1 month
         },
         title: {
-            text: `${processedStockName} Stock Price`
+            text: `${processedStockName} 주가`
         },
         yAxis: [{
             labels: {
@@ -207,7 +228,7 @@ function renderChart(stock, timeframe) {
                 x: -3
             },
             title: {
-                text: 'OHLC'
+                text: '주가 (OHLC)'
             },
             height: '60%',
             lineWidth: 2,
@@ -220,7 +241,7 @@ function renderChart(stock, timeframe) {
                 x: -3
             },
             title: {
-                text: 'Volume'
+                text: '거래량'
             },
             top: '65%',
             height: '35%',
