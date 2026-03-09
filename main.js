@@ -205,26 +205,28 @@ function renderBubbleChart(stocks) {
         chart: { type: 'bubble', plotBorderWidth: 1, zoomType: 'xy', animation: { duration: animationSpeed, easing: 'linear' } },
         title: { text: '' },
         xAxis: {
-            gridLineWidth: 1, title: { text: '기준일 대비 등락률 (%)' }, labels: { format: '{value}%' },
-            plotLines: [{ color: 'black', dashStyle: 'dot', width: 2, value: 0, label: { rotation: 0, y: 15, style: { fontStyle: 'italic' }, text: '기준점' }, zIndex: 3 }],
+            gridLineWidth: 1, title: { text: '등락률 (%)' }, labels: { format: '{value}%', style: { fontSize: '10px' } },
+            plotLines: [{ color: 'black', dashStyle: 'dot', width: 2, value: 0, label: { rotation: 0, y: 15, style: { fontStyle: 'italic', fontSize: '10px' }, text: '기준점' }, zIndex: 3 }],
             min: -100, max: 200
         },
-        yAxis: { type: 'logarithmic', title: { text: '시가총액 규모 (Log Scale)' }, min: minStartMC * 0.5, max: maxStartMC * 10 },
+        yAxis: { type: 'logarithmic', title: { text: '시가총액 규모', style: { fontSize: '10px' } }, labels: { style: { fontSize: '10px' } }, min: minStartMC * 0.5, max: maxStartMC * 10 },
         tooltip: {
-            useHTML: true, headerFormat: '<table>',
-            pointFormat: '<tr><th colspan="2"><h3>{point.name} ({point.code})</h3></th></tr><tr><th>등락률:</th><td>{point.x}%</td></tr><tr><th>추정시총:</th><td>{point.y}</td></tr><tr><th>거래량:</th><td>{point.z}</td></tr>',
-            footerFormat: '</table>', followPointer: true
+            useHTML: true, followPointer: true, padding: 8,
+            style: { fontSize: '12px' },
+            headerFormat: '<table>',
+            pointFormat: '<tr><th colspan="2"><b>{point.name}</b></th></tr><tr><th>등락률:</th><td>{point.x}%</td></tr><tr><th>시총지수:</th><td>{point.y}</td></tr>',
+            footerFormat: '</table>'
         },
         plotOptions: {
             series: {
-                dataLabels: { enabled: true, format: '{point.code}', style: { fontSize: '10px' }, allowOverlap: false },
+                dataLabels: { enabled: true, format: '{point.code}', style: { fontSize: '9px', textOutline: 'none' }, allowOverlap: false },
                 cursor: 'pointer',
                 point: { events: { click: function() { openTab({currentTarget: document.querySelectorAll(".tab-link")[1]}, 'analysis-tab'); selectStockByCode(this.code); } } },
                 animation: { duration: animationSpeed, easing: 'linear' },
-                marker: { fillOpacity: 0.7, lineWidth: 1, lineColor: null }
+                marker: { fillOpacity: 0.6, lineWidth: 1, lineColor: null }
             }
         },
-        series: [{ name: '종목별 등락', data: getBubbleDataForDateRange(stocks, startDate, filteredBubbleDates[0]), colorByPoint: false }]
+        series: [{ name: '종목', data: getBubbleDataForDateRange(stocks, startDate, filteredBubbleDates[0]), colorByPoint: false }]
     });
 }
 

@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>나스닥 100 분석 대시보드</title>
     <script src="https://code.highcharts.com/stock/highstock.js"></script>
     <script src="https://code.highcharts.com/highcharts-more.js"></script>
@@ -11,62 +12,60 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>나스닥 100 분석 대시보드</h1>
+    <h1>나스닥 100 대시보드</h1>
 
     <div class="tabs">
-        <button class="tab-link active" onclick="openTab(event, 'bubble-tab')">무빙 버블차트</button>
-        <button class="tab-link" onclick="openTab(event, 'analysis-tab')">종목 상세 분석</button>
+        <button class="tab-link active" onclick="openTab(event, 'bubble-tab')">버블차트</button>
+        <button class="tab-link" onclick="openTab(event, 'analysis-tab')">종목분석</button>
     </div>
 
     <!-- 1. 무빙 버블차트 탭 -->
     <div id="bubble-tab" class="tab-content active">
         <div id="bubble-section">
-            <h2 style="text-align: center;">나스닥 100 종목 흐름 (기준일 대비 등락률)</h2>
             <div class="bubble-controls">
                 <div class="control-group">
-                    <label>기준 시작일:</label>
+                    <label>기준일:</label>
                     <input type="date" id="bubble-start-date">
                 </div>
                 <div class="control-group">
-                    <button id="play-bubble">재생 (Play)</button>
+                    <button id="play-bubble">재생</button>
                     <span id="current-bubble-date"></span>
                 </div>
                 <div class="control-group">
-                    <label for="speed-control">재생 속도:</label>
+                    <label>속도:</label>
                     <input type="range" id="speed-control" min="50" max="1000" value="150" step="50">
-                    <span id="speed-value">150ms</span>
                 </div>
             </div>
-            <!-- 날짜 선택 타임라인 스크롤바 추가 -->
-            <div class="timeline-container" style="margin: 20px 0;">
-                <input type="range" id="date-slider" min="0" max="100" value="0" style="width: 100%; height: 10px; cursor: pointer;">
+            <div class="timeline-container">
+                <input type="range" id="date-slider" min="0" max="100" value="0">
             </div>
-            <div id="bubble-container" style="height: 650px;"></div>
+            <div id="bubble-container" class="chart-container"></div>
         </div>
     </div>
 
     <!-- 2. 종목 분석 탭 -->
     <div id="analysis-tab" class="tab-content">
         <div class="controls">
-            <label for="stock-select">종목 선택:</label>
-            <input type="text" id="stock-search" placeholder="종목명 또는 티커 검색...">
-            <select id="stock-select"></select>
-
-            <label>차트 종류:</label>
-            <button id="timeframe-daily" class="active">일봉</button>
-            <button id="timeframe-weekly">주봉</button>
-            <button id="timeframe-monthly">월봉</button>
-
-            <label style="margin-left: 20px;">조회 기간:</label>
-            <input type="date" id="start-date">
-            <span>~</span>
-            <input type="date" id="end-date">
+            <div class="search-box">
+                <input type="text" id="stock-search" placeholder="검색...">
+                <select id="stock-select"></select>
+            </div>
+            <div class="timeframe-box">
+                <button id="timeframe-daily" class="active">일봉</button>
+                <button id="timeframe-weekly">주봉</button>
+                <button id="timeframe-monthly">월봉</button>
+            </div>
+            <div class="date-box">
+                <input type="date" id="start-date">
+                <span>~</span>
+                <input type="date" id="end-date">
+            </div>
         </div>
         
         <div id="recommendation">
-            <h2><span id="stock-name"></span> (<span id="stock-code"></span>)</h2>
+            <h3><span id="stock-name"></span> (<span id="stock-code"></span>)</h3>
         </div>
-        <div id="container" style="height: 600px;"></div>
+        <div id="container" class="chart-container"></div>
     </div>
 
     <script src="main.js"></script>
