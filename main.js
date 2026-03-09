@@ -40,7 +40,8 @@ const sharesProxy = {
     'CHTR': 1, 'CPAY': 0.7, 'CPRT': 9, 'CRWD': 2, 'CTAS': 1, 'CTSH': 5, 'DASH': 4, 'DDOG': 3, 'DLTR': 2, 'DXCM': 4,
     'EA': 2, 'EBAY': 5, 'EXC': 10, 'FAST': 5, 'FTNT': 7, 'IDXX': 0.8, 'INTU': 2, 'KDP': 14, 'LULU': 1, 'MAR': 2,
     'MCHP': 5, 'MDB': 0.7, 'MNST': 10, 'NXPI': 2, 'ODFL': 1, 'ON': 4, 'ORLY': 0.6, 'PAYX': 3, 'PCAR': 5, 'PDD': 13,
-    'ROP': 1, 'ROST': 3, 'SNPS': 1, 'TEAM': 2, 'VRSK': 1, 'WBA': 8, 'WBD': 24, 'WDAY': 2, 'WLTW': 1, 'WMT': 80,
+    'ROP': 1, 'ROST': 3, 'SNPS': 1, 'TEAM': 2, 'VRSK': 1,
+    'WBA': 8, 'WBD': 24, 'WDAY': 2, 'WLTW': 1, 'WMT': 80,
     'XEL': 5, 'ZS': 1
 };
 
@@ -54,7 +55,8 @@ window.openTab = function(evt, tabName) {
     for (let i = 0; i < tabContents.length; i++) tabContents[i].classList.remove("active");
     const tabLinks = document.getElementsByClassName("tab-link");
     for (let i = 0; i < tabLinks.length; i++) tabLinks[i].classList.remove("active");
-    document.getElementById(tabName).classList.add("active");
+    const targetTab = document.getElementById(tabName);
+    if (targetTab) targetTab.classList.add("active");
     if (evt && evt.currentTarget) evt.currentTarget.classList.add("active");
     if (tabName === 'bubble-tab' && bubbleChart) bubbleChart.reflow();
     if (tabName === 'analysis-tab' && stockChart) stockChart.reflow();
@@ -88,7 +90,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     ['daily', 'weekly', 'monthly'].forEach(tf => {
-        document.getElementById(`timeframe-${tf}`).addEventListener('click', () => setTimeframe(tf.charAt(0).toUpperCase() + tf.slice(1)));
+        const btn = document.getElementById(`timeframe-${tf}`);
+        if (btn) btn.addEventListener('click', () => setTimeframe(tf.charAt(0).toUpperCase() + tf.slice(1)));
     });
 
     document.getElementById('play-bubble').addEventListener('click', toggleBubbleAnimation);
@@ -103,11 +106,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const idx = parseInt(e.target.value);
         if (filteredBubbleDates[idx]) {
             currentBubbleDateIndex = bubbleDates.indexOf(filteredBubbleDates[idx]);
-            updateBubbleChart(filteredBubbleDates[idx], 0); // 즉시 갱신
+            updateBubbleChart(filteredBubbleDates[idx], 0);
         }
     });
 
-    // 기준일 변경 시 슬라이더 초기화
     document.getElementById('bubble-start-date').addEventListener('change', () => {
         if (bubbleAnimationInterval) toggleBubbleAnimation();
         renderBubbleChart(allStocksData);
@@ -125,7 +127,7 @@ function startAnimationLoop() {
         currentBubbleDateIndex++;
         if (currentBubbleDateIndex >= bubbleDates.length) currentBubbleDateIndex = bubbleDates.indexOf(filteredBubbleDates[0]);
         const date = bubbleDates[currentBubbleDateIndex];
-        updateBubbleChart(date, 0); // 즉시 갱신
+        updateBubbleChart(date, 0);
         const sIdx = filteredBubbleDates.indexOf(date);
         if (sIdx !== -1) document.getElementById('date-slider').value = sIdx;
     }, animationSpeed);
@@ -136,12 +138,14 @@ function updateBubbleChart(date, duration) {
     const startDate = document.getElementById('bubble-start-date').value;
     const bubbleData = getBubbleDataForDateRange(allStocksData, startDate, date);
     
+    // Performance Optimization: Update all series first, then redraw once
     Object.keys(sectorConfig).forEach((sectorId, i) => {
         const sectorData = bubbleData.filter(d => d.sectorId === sectorId);
         if (bubbleChart.series[i]) {
-            bubbleChart.series[i].setData(sectorData, true, false); // 애니메이션 끔 (false)
+            bubbleChart.series[i].setData(sectorData, false, false); 
         }
     });
+    bubbleChart.redraw(false); // Single redraw without animation
     document.getElementById('current-bubble-date').textContent = date;
 }
 
@@ -173,10 +177,11 @@ function renderBubbleChart(stocks) {
     bubbleDates = [...new Set(stocks.flatMap(s => s.historicalData ? s.historicalData.map(d => d.Date) : []))].sort();
     const startDate = document.getElementById('bubble-start-date').value || bubbleDates[0];
     filteredBubbleDates = bubbleDates.filter(d => d >= startDate);
-    
     const slider = document.getElementById('date-slider');
-    slider.max = filteredBubbleDates.length - 1;
-    slider.value = 0;
+    if (slider) {
+        slider.max = Math.max(filteredBubbleDates.length - 1, 0);
+        slider.value = 0;
+    }
 
     const startMCs = stocks.filter(s => s.code !== '^NDX').map(s => {
         const idx = s.historicalData ? s.historicalData.findIndex(d => d.Date >= startDate) : -1;
@@ -195,7 +200,7 @@ function renderBubbleChart(stocks) {
     }));
 
     bubbleChart = Highcharts.chart('bubble-container', {
-        chart: { type: 'bubble', plotBorderWidth: 1, zoomType: 'xy', animation: false }, // 애니메이션 전역 비활성화
+        chart: { type: 'bubble', plotBorderWidth: 1, zoomType: 'xy', animation: false },
         title: { text: '' },
         xAxis: {
             gridLineWidth: 1, title: { text: '수익률 (%)', style: { fontWeight: 'bold' } }, 
@@ -220,9 +225,9 @@ function renderBubbleChart(stocks) {
             series: {
                 dataLabels: { enabled: true, format: '{point.code}', style: { fontSize: '10px', textOutline: 'none' } },
                 cursor: 'pointer',
-                point: { events: { click: function() { window.openTab(null, 'analysis-tab'); selectStockByCode(this.code); } } },
+                point: { events: { click: function() { openTab(null, 'analysis-tab'); selectStockByCode(this.code); } } },
                 marker: { fillOpacity: 0.6 },
-                animation: false // 개별 애니메이션 비활성화
+                animation: false
             }
         },
         series: series,
