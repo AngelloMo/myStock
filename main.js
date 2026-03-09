@@ -188,14 +188,14 @@ function getBubbleDataForDateRange(stocks, startDate, currentDate) {
         // Return relative to the start date of the period
         const changePercent = ((current.Close - base.Close) / base.Close) * 100;
         
-        // Using average Volume * Price as a simple proxy for Market Cap relative scale
+        // Y is Market Cap Proxy (Price * Volume)
         const marketCapProxy = current.Volume * current.Close;
 
         return {
             id: stock.code,
             x: parseFloat(changePercent.toFixed(2)),
             y: marketCapProxy,
-            z: marketCapProxy,
+            z: current.Volume, // Set bubble size to Volume as requested
             name: stock.name,
             code: stock.code,
             color: stockColors[stock.code]
@@ -236,8 +236,8 @@ function renderBubbleChart(stocks) {
     const maxStartProxy = startProxies.length > 0 ? Math.max(...startProxies) : 1000000;
     const minProxy = startProxies.length > 0 ? Math.min(...startProxies) : 1;
 
-    // Y-axis max is twice the max proxy at start date
-    const yMax = maxStartProxy * 2;
+    // Y-axis max is three times the max proxy at start date
+    const yMax = maxStartProxy * 3;
 
     currentBubbleDateIndex = bubbleDates.indexOf(bubbleDates.find(d => d >= startDate));
     if (currentBubbleDateIndex === -1) currentBubbleDateIndex = 0;
@@ -279,8 +279,8 @@ function renderBubbleChart(stocks) {
                 },
                 zIndex: 3
             }],
-            min: -50,
-            max: 200 // Fixed max to 200% as requested
+            min: -200, // Fixed range from -200%
+            max: 200  // to 200%
         },
         yAxis: {
             type: 'logarithmic',
@@ -288,14 +288,15 @@ function renderBubbleChart(stocks) {
                 text: '시가총액 규모 (Log Scale Proxy)'
             },
             min: minProxy / 2,
-            max: yMax // Twice the start date max proxy
+            max: yMax // Three times the start date max proxy
         },
         tooltip: {
             useHTML: true,
             headerFormat: '<table>',
             pointFormat: '<tr><th colspan="2"><h3>{point.name} ({point.code})</h3></th></tr>' +
                 '<tr><th>시작일 대비 등락률:</th><td>{point.x}%</td></tr>' +
-                '<tr><th>규모 지수:</th><td>{point.y}</td></tr>',
+                '<tr><th>규모 지수:</th><td>{point.y}</td></tr>' +
+                '<tr><th>거래량:</th><td>{point.z}</td></tr>',
             footerFormat: '</table>',
             followPointer: true
         },
