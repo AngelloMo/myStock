@@ -146,7 +146,12 @@ function updateBubbleChart(date) {
     if (!bubbleChart) return;
     const startDate = document.getElementById('bubble-start-date').value;
     const bubbleData = getBubbleDataForDateRange(allStocksData, startDate, date);
-    bubbleChart.series[0].setData(bubbleData, true, { duration: animationSpeed });
+    
+    // Use linear easing for smoother constant motion during play
+    bubbleChart.series[0].setData(bubbleData, true, { 
+        duration: animationSpeed,
+        easing: 'linear'
+    });
     document.getElementById('current-bubble-date').textContent = date;
 }
 
@@ -209,7 +214,10 @@ function renderBubbleChart(stocks) {
             type: 'bubble',
             plotBorderWidth: 1,
             zoomType: 'xy',
-            animation: { duration: animationSpeed }
+            animation: { 
+                duration: animationSpeed,
+                easing: 'linear'
+            }
         },
         title: { text: '' },
         xAxis: {
@@ -221,15 +229,14 @@ function renderBubbleChart(stocks) {
                 label: { rotation: 0, y: 15, style: { fontStyle: 'italic' }, text: '기준점' },
                 zIndex: 3
             }],
-            min: -100, // Fixed min -100% as requested
+            min: -100,
             max: 200
         },
         yAxis: {
             type: 'logarithmic',
             title: { text: '시가총액 규모 (Log Scale Proxy)' },
-            // Tighten the bounds for better visibility
             min: minStartProxy * 0.1, 
-            max: maxStartProxy * 5 
+            max: maxStartProxy * 10 // Increased headroom
         },
         tooltip: {
             useHTML: true,
@@ -243,11 +250,23 @@ function renderBubbleChart(stocks) {
         },
         plotOptions: {
             series: {
-                dataLabels: { enabled: true, format: '{point.code}', style: { fontSize: '10px' } },
+                dataLabels: { 
+                    enabled: true, 
+                    format: '{point.code}', 
+                    style: { fontSize: '10px' },
+                    allowOverlap: false
+                },
                 cursor: 'pointer',
                 point: { events: { click: function() { openTab({currentTarget: document.querySelectorAll(".tab-link")[1]}, 'analysis-tab'); selectStockByCode(this.code); } } },
-                animation: { duration: animationSpeed },
-                marker: { fillOpacity: 0.7 }
+                animation: { 
+                    duration: animationSpeed,
+                    easing: 'linear'
+                },
+                marker: { 
+                    fillOpacity: 0.7,
+                    lineWidth: 1,
+                    lineColor: null // Inherit point color
+                }
             }
         },
         series: [{ name: '종목별 등락', data: bubbleData, colorByPoint: false }]
