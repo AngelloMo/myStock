@@ -5,6 +5,7 @@ let bubbleChart = null;
 let bubbleDates = [];
 let currentBubbleDateIndex = 0;
 let bubbleAnimationInterval = null;
+let stockColors = {};
 
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Fetch stock.json
@@ -21,6 +22,13 @@ document.addEventListener('DOMContentLoaded', () => {
         })
         .then(data => {
             allStocksData = data;
+            
+            // Assign fixed colors to stocks for consistency in bubble chart
+            const colors = Highcharts.getOptions().colors;
+            allStocksData.filter(s => s.code !== '^NDX').forEach((stock, i) => {
+                stockColors[stock.code] = colors[i % colors.length];
+            });
+
             // 2. Populate stock selection dropdown
             populateStockSelect(allStocksData);
 
@@ -137,14 +145,15 @@ function toggleBubbleAnimation() {
                 currentBubbleDateIndex = bubbleDates.indexOf(firstValidDate);
             }
             updateBubbleChart(bubbleDates[currentBubbleDateIndex]);
-        }, 500); // 500ms interval for movement
+        }, 150); // Faster interval for smoother motion (150ms)
     }
 }
 
 function updateBubbleChart(date) {
     if (!bubbleChart) return;
     const bubbleData = getBubbleDataForDate(allStocksData, date);
-    bubbleChart.series[0].setData(bubbleData);
+    // Use setData with animation for smooth transition
+    bubbleChart.series[0].setData(bubbleData, true, { duration: 150 });
     document.getElementById('current-bubble-date').textContent = date;
 }
 
@@ -159,11 +168,13 @@ function getBubbleDataForDate(stocks, date) {
         const changePercent = ((current.Close - prev.Close) / prev.Close) * 100;
         
         return {
+            id: stock.code, // Fixed ID for Highcharts to track the same bubble
             x: parseFloat(changePercent.toFixed(2)),
             y: current.Volume,
             z: current.Volume,
             name: stock.name,
-            code: stock.code
+            code: stock.code,
+            color: stockColors[stock.code] // Consistent color
         };
     }).filter(d => d !== null);
 }
@@ -189,6 +200,11 @@ function selectStockByCode(selectedCode) {
 function renderBubbleChart(stocks) {
     // Get all unique dates from all stocks
     bubbleDates = [...new Set(stocks.flatMap(s => s.historicalData.map(d => d.Date)))].sort();
+    
+    // Find max volume across ALL data to fix Y axis
+    const allVolumes = stocks.flatMap(s => s.historicalData.map(d => d.Volume));
+    const maxVolume = Math.max(...allVolumes);
+
     currentBubbleDateIndex = bubbleDates.length - 1;
     const initialDate = bubbleDates[currentBubbleDateIndex];
     
@@ -201,7 +217,7 @@ function renderBubbleChart(stocks) {
             plotBorderWidth: 1,
             zoomType: 'xy',
             animation: {
-                duration: 500 // Smooth transition between dates
+                duration: 150
             }
         },
         title: {
@@ -230,8 +246,8 @@ function renderBubbleChart(stocks) {
                 },
                 zIndex: 3
             }],
-            min: -10, // Fixed axes for better "moving" feel
-            max: 10
+            min: -15, // Wider range for more movement
+            max: 15
         },
         yAxis: {
             startOnTick: false,
@@ -241,7 +257,9 @@ function renderBubbleChart(stocks) {
             },
             labels: {
                 format: '{value}'
-            }
+            },
+            min: 0,
+            max: maxVolume * 1.1 // Fixed Y axis based on global max
         },
         tooltip: {
             useHTML: true,
@@ -256,7 +274,10 @@ function renderBubbleChart(stocks) {
             series: {
                 dataLabels: {
                     enabled: true,
-                    format: '{point.code}'
+                    format: '{point.code}',
+                    style: {
+                        fontSize: '9px'
+                    }
                 },
                 cursor: 'pointer',
                 point: {
@@ -267,14 +288,240 @@ function renderBubbleChart(stocks) {
                     }
                 },
                 animation: {
-                    duration: 500
+                    duration: 150
+                },
+                marker: {
+                    fillOpacity: 0.7
                 }
             }
         },
         series: [{
             name: '종목별 등락',
             data: bubbleData,
-            colorByPoint: true
+            colorByPoint: false // Handled by fixed colors in data
+        }]
+    });
+}
+
+function populateStockSelect(stocks) {
+    const selectElement = document.getElementById('stock-select');
+    selectElement.innerHTML = ''; // Clear previous options
+    stocks.forEach(stock => {
+        const option = document.createElement('option');
+        option.value = stock.code;
+        option.textContent = `${stock.name} (${stock.code})`;
+        selectElement.appendChild(option);
+    });
+}
+
+function updateStockDisplay(stock) {
+    document.getElementById('stock-name').textContent = stock.name;
+    document.getElementById('stock-code').textContent = stock.code;
+}
+
+function setTimeframe(timeframe) {
+    // Remove 'active' class from all timeframe buttons
+    document.querySelectorAll('.controls button').forEach(button => {
+        button.classList.remove('active');
+    });
+    // Add 'active' class to the clicked button
+    document.getElementById(`timeframe-${timeframe.toLowerCase()}`).classList.add('active');
+
+    currentChartTimeframe = timeframe;
+    if (currentStock) {
+        renderChart(currentStock, currentChartTimeframe);
+    }
+}
+
+// 4. Implement data aggregation functions
+function aggregateToWeekly(dailyData) {
+    const weeklyData = [];
+    let currentWeek = [];
+
+    // Ensure data is sorted by date ascending
+    dailyData.sort((a, b) => new Date(a.Date) - new Date(b.Date));
+
+    dailyData.forEach((day, index) => {
+        const date = new Date(day.Date);
+        currentWeek.push(day);
+
+        // Determine if this is the end of a week or the last day of data
+        // A week ends on Sunday (day 0), so we look for next day being Monday (day 1)
+        // Or if it's the last entry
+        const nextDayDate = index < dailyData.length - 1 ? new Date(dailyData[index + 1].Date) : null;
+        const isEndOfWeek = nextDayDate ? nextDayDate.getDay() === 1 : true; // Monday is 1, Sunday is 0
+
+        if (isEndOfWeek || index === dailyData.length - 1) {
+            if (currentWeek.length > 0) {
+                const open = currentWeek[0].Open;
+                const high = Math.max(...currentWeek.map(d => d.High));
+                const low = Math.min(...currentWeek.map(d => d.Low));
+                const close = currentWeek[currentWeek.length - 1].Close;
+                const volume = currentWeek.reduce((sum, d) => sum + d.Volume, 0);
+                const weekEndDate = new Date(currentWeek[currentWeek.length - 1].Date);
+
+                weeklyData.push({
+                    Date: weekEndDate.toISOString().split('T')[0],
+                    Open: open,
+                    High: high,
+                    Low: low,
+                    Close: close,
+                    Volume: volume
+                });
+            }
+            currentWeek = []; // Reset for the next week
+        }
+    });
+    return weeklyData;
+}
+
+
+function aggregateToMonthly(dailyData) {
+    const monthlyData = [];
+    let currentMonth = [];
+
+    // Ensure data is sorted by date ascending
+    dailyData.sort((a, b) => new Date(a.Date) - new Date(b.Date));
+
+    dailyData.forEach((day, index) => {
+        const date = new Date(day.Date);
+        currentMonth.push(day);
+
+        // Determine if this is the end of a month or the last day of data
+        const nextDayDate = index < dailyData.length - 1 ? new Date(dailyData[index + 1].Date) : null;
+        const isEndOfMonth = nextDayDate ? nextDayDate.getMonth() !== date.getMonth() : true;
+
+        if (isEndOfMonth || index === dailyData.length - 1) {
+            if (currentMonth.length > 0) {
+                const open = currentMonth[0].Open;
+                const high = Math.max(...currentMonth.map(d => d.High));
+                const low = Math.min(...currentMonth.map(d => d.Low));
+                const close = currentMonth[currentMonth.length - 1].Close;
+                const volume = currentMonth.reduce((sum, d) => sum + d.Volume, 0);
+                const monthEndDate = new Date(currentMonth[currentMonth.length - 1].Date);
+
+                monthlyData.push({
+                    Date: monthEndDate.toISOString().split('T')[0],
+                    Open: open,
+                    High: high,
+                    Low: low,
+                    Close: close,
+                    Volume: volume
+                });
+            }
+            currentMonth = []; // Reset for the next month
+        }
+    });
+    return monthlyData;
+}
+
+
+// 5 & 6. Update Highcharts rendering logic and handle stock selection changes
+function renderChart(stock, timeframe) {
+    let dataToRender = [];
+    let processedStockName = stock.name;
+
+    // Filter by Date Range
+    const startDate = document.getElementById('start-date').value;
+    const endDate = document.getElementById('end-date').value;
+    
+    let filteredData = stock.historicalData;
+    if (startDate || endDate) {
+        filteredData = stock.historicalData.filter(d => {
+            let matches = true;
+            if (startDate && d.Date < startDate) matches = false;
+            if (endDate && d.Date > endDate) matches = false;
+            return matches;
+        });
+    }
+
+    switch (timeframe) {
+        case 'Daily':
+            dataToRender = filteredData;
+            processedStockName += ' (일봉)';
+            break;
+        case 'Weekly':
+            dataToRender = aggregateToWeekly(filteredData);
+            processedStockName += ' (주봉)';
+            break;
+        case 'Monthly':
+            dataToRender = aggregateToMonthly(filteredData);
+            processedStockName += ' (월봉)';
+            break;
+        default:
+            dataToRender = filteredData;
+            processedStockName += ' (일봉)';
+    }
+
+    // Ensure dataToRender is sorted by date before mapping for Highcharts
+    dataToRender.sort((a, b) => new Date(a.Date) - new Date(b.Date));
+
+    const ohlc = dataToRender.map(d => [new Date(d.Date).getTime(), d.Open, d.High, d.Low, d.Close]);
+    const volume = dataToRender.map(d => [new Date(d.Date).getTime(), d.Volume]);
+
+    Highcharts.stockChart('container', {
+        chart: {
+            height: 500
+        },
+        rangeSelector: {
+            enabled: false // Using our own date inputs
+        },
+        title: {
+            text: `${processedStockName} 주가`
+        },
+        yAxis: [{
+            labels: {
+                align: 'right',
+                x: -3
+            },
+            title: {
+                text: '주가 (OHLC)'
+            },
+            height: '60%',
+            lineWidth: 2,
+            resize: {
+                enabled: true
+            }
+        }, {
+            labels: {
+                align: 'right',
+                x: -3
+            },
+            title: {
+                text: '거래량'
+            },
+            top: '65%',
+            height: '35%',
+            offset: 0,
+            lineWidth: 2
+        }],
+        tooltip: {
+            split: true
+        },
+        series: [{
+            type: 'candlestick',
+            name: stock.name,
+            id: stock.code,
+            zIndex: 2,
+            data: ohlc,
+            // Highcharts' built-in data grouping might override custom aggregation
+            // We disable it here as we are doing manual aggregation
+            dataGrouping: {
+                enabled: false
+            },
+            color: '#0000FF', // 하락 시 파란색 (Blue)
+            lineColor: '#0000FF',
+            upColor: '#FF0000', // 상승 시 빨간색 (Red)
+            upLineColor: '#FF0000'
+        }, {
+            type: 'column',
+            name: 'Volume',
+            id: 'volume',
+            data: volume,
+            yAxis: 1,
+            dataGrouping: {
+                enabled: false
+            }
         }]
     });
 }
