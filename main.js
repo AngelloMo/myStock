@@ -10,31 +10,24 @@ let currentBubbleDateIndex = 0;
 let bubbleAnimationInterval = null;
 let animationSpeed = 300;
 
-// Sector Mapping & Colors (ETF-like grouping)
+// Sector Mapping & Colors
 const sectorConfig = {
     'Mag7': { color: '#FFD700', name: 'Mag 7 (빅테크)', basis: '나스닥 시총 최상위 핵심 기술주' },
-    'Semicon': { color: '#FF8C00', name: '반도체 (Semicon)', basis: '반도체 설계, 제조 및 장비 기업 (SOXX 관련)' },
+    'Semicon': { color: '#FF8C00', name: '반도체 (Semicon)', basis: '반도체 설계, 제조 및 장비 기업' },
     'Software': { color: '#1E90FF', name: '소프트웨어/보안', basis: 'SaaS, 클라우드 및 사이버 보안 기업' },
     'Consumer': { color: '#32CD32', name: '소비재/리테일', basis: '필수 및 임의 소비재, 대형 유통망' },
     'BioHealth': { color: '#FF69B4', name: '바이오/헬스케어', basis: '제약, 바이오 및 의료 기기 기업' },
     'MediaComm': { color: '#9370DB', name: '미디어/통신', basis: '콘텐츠, 스트리밍 및 통신 서비스' },
-    'Industrial': { color: '#A9A9A9', name: '산업재/핀테크/기타', basis: '금융 기술, 물류 및 기타 산업' }
+    'Industrial': { color: '#A9A9A9', name: '산업재/기타', basis: '금융 기술, 물류 및 기타 산업' }
 };
 
 const stockToSector = {
-    // Mag 7
     'AAPL': 'Mag7', 'MSFT': 'Mag7', 'GOOGL': 'Mag7', 'GOOG': 'Mag7', 'AMZN': 'Mag7', 'META': 'Mag7', 'NVDA': 'Mag7', 'TSLA': 'Mag7',
-    // Semicon
     'AMD': 'Semicon', 'AVGO': 'Semicon', 'QCOM': 'Semicon', 'INTC': 'Semicon', 'TXN': 'Semicon', 'AMAT': 'Semicon', 'LRCX': 'Semicon', 'MU': 'Semicon', 'ASML': 'Semicon', 'ADI': 'Semicon', 'NXPI': 'Semicon', 'MCHP': 'Semicon', 'ON': 'Semicon', 'KLAC': 'Semicon',
-    // Software
     'ADBE': 'Software', 'PANW': 'Software', 'CDNS': 'Software', 'SNPS': 'Software', 'INTU': 'Software', 'WDAY': 'Software', 'TEAM': 'Software', 'ADSK': 'Software', 'MDB': 'Software', 'CRWD': 'Software', 'ZS': 'Software', 'PLTR': 'Software',
-    // Consumer
     'COST': 'Consumer', 'WMT': 'Consumer', 'PEP': 'Consumer', 'MDLZ': 'Consumer', 'MNST': 'Consumer', 'KDP': 'Consumer', 'LULU': 'Consumer', 'MAR': 'Consumer', 'BKNG': 'Consumer', 'ABNB': 'Consumer', 'DASH': 'Consumer', 'PDD': 'Consumer', 'MELI': 'Consumer', 'SBUX': 'Consumer', 'ORLY': 'Consumer', 'ROST': 'Consumer', 'DLTR': 'Consumer',
-    // BioHealth
     'AMGN': 'BioHealth', 'GILD': 'BioHealth', 'ISRG': 'BioHealth', 'VRTX': 'BioHealth', 'REGN': 'BioHealth', 'DXCM': 'BioHealth', 'IDXX': 'BioHealth', 'AZN': 'BioHealth', 'GEHC': 'BioHealth',
-    // MediaComm
     'NFLX': 'MediaComm', 'CMCSA': 'MediaComm', 'CHTR': 'MediaComm', 'WBD': 'MediaComm', 'TMUS': 'MediaComm',
-    // Industrial/Others
     'HON': 'Industrial', 'CSX': 'Industrial', 'ODFL': 'Industrial', 'PCAR': 'Industrial', 'PYPL': 'Industrial', 'CPAY': 'Industrial', 'VRSK': 'Industrial', 'WBA': 'Industrial', 'WLTW': 'Industrial', 'XEL': 'Industrial', 'EXC': 'Industrial', 'AEP': 'Industrial', 'BKR': 'Industrial', 'CEG': 'Industrial'
 };
 
@@ -61,8 +54,7 @@ window.openTab = function(evt, tabName) {
     for (let i = 0; i < tabContents.length; i++) tabContents[i].classList.remove("active");
     const tabLinks = document.getElementsByClassName("tab-link");
     for (let i = 0; i < tabLinks.length; i++) tabLinks[i].classList.remove("active");
-    const targetTab = document.getElementById(tabName);
-    if (targetTab) targetTab.classList.add("active");
+    document.getElementById(tabName).classList.add("active");
     if (evt && evt.currentTarget) evt.currentTarget.classList.add("active");
     if (tabName === 'bubble-tab' && bubbleChart) bubbleChart.reflow();
     if (tabName === 'analysis-tab' && stockChart) stockChart.reflow();
@@ -111,8 +103,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const idx = parseInt(e.target.value);
         if (filteredBubbleDates[idx]) {
             currentBubbleDateIndex = bubbleDates.indexOf(filteredBubbleDates[idx]);
-            updateBubbleChart(filteredBubbleDates[idx], 100);
+            updateBubbleChart(filteredBubbleDates[idx], 0); // 즉시 갱신
         }
+    });
+
+    // 기준일 변경 시 슬라이더 초기화
+    document.getElementById('bubble-start-date').addEventListener('change', () => {
+        if (bubbleAnimationInterval) toggleBubbleAnimation();
+        renderBubbleChart(allStocksData);
     });
 });
 
@@ -127,7 +125,7 @@ function startAnimationLoop() {
         currentBubbleDateIndex++;
         if (currentBubbleDateIndex >= bubbleDates.length) currentBubbleDateIndex = bubbleDates.indexOf(filteredBubbleDates[0]);
         const date = bubbleDates[currentBubbleDateIndex];
-        updateBubbleChart(date, animationSpeed);
+        updateBubbleChart(date, 0); // 즉시 갱신
         const sIdx = filteredBubbleDates.indexOf(date);
         if (sIdx !== -1) document.getElementById('date-slider').value = sIdx;
     }, animationSpeed);
@@ -138,11 +136,10 @@ function updateBubbleChart(date, duration) {
     const startDate = document.getElementById('bubble-start-date').value;
     const bubbleData = getBubbleDataForDateRange(allStocksData, startDate, date);
     
-    // Sector-based series update
     Object.keys(sectorConfig).forEach((sectorId, i) => {
         const sectorData = bubbleData.filter(d => d.sectorId === sectorId);
         if (bubbleChart.series[i]) {
-            bubbleChart.series[i].setData(sectorData, true, { duration: Math.max(duration * 0.9, 50), easing: 'linear' });
+            bubbleChart.series[i].setData(sectorData, true, false); // 애니메이션 끔 (false)
         }
     });
     document.getElementById('current-bubble-date').textContent = date;
@@ -176,8 +173,10 @@ function renderBubbleChart(stocks) {
     bubbleDates = [...new Set(stocks.flatMap(s => s.historicalData ? s.historicalData.map(d => d.Date) : []))].sort();
     const startDate = document.getElementById('bubble-start-date').value || bubbleDates[0];
     filteredBubbleDates = bubbleDates.filter(d => d >= startDate);
-    document.getElementById('date-slider').max = filteredBubbleDates.length - 1;
-    document.getElementById('date-slider').value = 0;
+    
+    const slider = document.getElementById('date-slider');
+    slider.max = filteredBubbleDates.length - 1;
+    slider.value = 0;
 
     const startMCs = stocks.filter(s => s.code !== '^NDX').map(s => {
         const idx = s.historicalData ? s.historicalData.findIndex(d => d.Date >= startDate) : -1;
@@ -196,7 +195,7 @@ function renderBubbleChart(stocks) {
     }));
 
     bubbleChart = Highcharts.chart('bubble-container', {
-        chart: { type: 'bubble', plotBorderWidth: 1, zoomType: 'xy' },
+        chart: { type: 'bubble', plotBorderWidth: 1, zoomType: 'xy', animation: false }, // 애니메이션 전역 비활성화
         title: { text: '' },
         xAxis: {
             gridLineWidth: 1, title: { text: '수익률 (%)', style: { fontWeight: 'bold' } }, 
@@ -212,10 +211,8 @@ function renderBubbleChart(stocks) {
             headerFormat: '<table>',
             pointFormat: '<tr><th colspan="2" style="font-size:1.1em; color:{point.color}">{point.name} ({point.code})</th></tr>' +
                          '<tr><td>섹터:</td><td style="text-align:right"><b>{point.sectorName}</b></td></tr>' +
-                         '<tr><td>분류근거:</td><td style="text-align:right; font-size:0.9em">{point.basis}</td></tr>' +
                          '<tr><td>수익률:</td><td style="text-align:right"><b>{point.x}%</b></td></tr>' +
-                         '<tr><td>추정시총:</td><td style="text-align:right"><b>${point.y}B</b></td></tr>' +
-                         '<tr><td>거래량:</td><td style="text-align:right">{point.z}</td></tr>',
+                         '<tr><td>추정시총:</td><td style="text-align:right"><b>${point.y}B</b></td></tr>',
             footerFormat: '</table>',
             followPointer: true
         },
@@ -223,8 +220,9 @@ function renderBubbleChart(stocks) {
             series: {
                 dataLabels: { enabled: true, format: '{point.code}', style: { fontSize: '10px', textOutline: 'none' } },
                 cursor: 'pointer',
-                point: { events: { click: function() { openTab(null, 'analysis-tab'); selectStockByCode(this.code); } } },
-                marker: { fillOpacity: 0.6 }
+                point: { events: { click: function() { window.openTab(null, 'analysis-tab'); selectStockByCode(this.code); } } },
+                marker: { fillOpacity: 0.6 },
+                animation: false // 개별 애니메이션 비활성화
             }
         },
         series: series,
