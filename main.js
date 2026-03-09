@@ -20,6 +20,9 @@ document.addEventListener('DOMContentLoaded', () => {
             // 2. Populate stock selection dropdown
             populateStockSelect(allStocksData);
 
+            // 3. Render Bubble Chart for all stocks
+            renderBubbleChart(allStocksData);
+
             // Select NASDAQ 100 Index by default if available, otherwise select the first stock
             if (allStocksData.length > 0) {
                 const ndxIndex = allStocksData.findIndex(stock => stock.code === '^NDX');
@@ -85,19 +88,121 @@ document.addEventListener('DOMContentLoaded', () => {
     // Handle stock selection changes
     document.getElementById('stock-select').addEventListener('change', (event) => {
         const selectedCode = event.target.value;
-        currentStock = allStocksData.find(stock => stock.code === selectedCode);
-        if (currentStock) {
-            // Update dates for new stock
-            if (currentStock.historicalData && currentStock.historicalData.length > 0) {
-                const sortedData = [...currentStock.historicalData].sort((a, b) => new Date(a.Date) - new Date(b.Date));
-                document.getElementById('start-date').value = sortedData[0].Date;
-                document.getElementById('end-date').value = sortedData[sortedData.length - 1].Date;
-            }
-            updateStockDisplay(currentStock);
-            renderChart(currentStock, currentChartTimeframe);
-        }
+        selectStockByCode(selectedCode);
     });
 });
+
+function selectStockByCode(selectedCode) {
+    currentStock = allStocksData.find(stock => stock.code === selectedCode);
+    if (currentStock) {
+        // Update dates for new stock
+        if (currentStock.historicalData && currentStock.historicalData.length > 0) {
+            const sortedData = [...currentStock.historicalData].sort((a, b) => new Date(a.Date) - new Date(b.Date));
+            document.getElementById('start-date').value = sortedData[0].Date;
+            document.getElementById('end-date').value = sortedData[sortedData.length - 1].Date;
+        }
+        document.getElementById('stock-select').value = currentStock.code;
+        updateStockDisplay(currentStock);
+        renderChart(currentStock, currentChartTimeframe);
+        
+        // Scroll to chart
+        document.getElementById('recommendation').scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+function renderBubbleChart(stocks) {
+    const bubbleData = stocks.filter(s => s.code !== '^NDX').map(stock => {
+        const history = stock.historicalData;
+        if (history.length < 2) return null;
+        
+        const latest = history[history.length - 1];
+        const prev = history[history.length - 2];
+        const changePercent = ((latest.Close - prev.Close) / prev.Close) * 100;
+        
+        return {
+            x: parseFloat(changePercent.toFixed(2)),
+            y: latest.Volume,
+            z: latest.Volume,
+            name: stock.name,
+            code: stock.code
+        };
+    }).filter(d => d !== null);
+
+    Highcharts.chart('bubble-container', {
+        chart: {
+            type: 'bubble',
+            plotBorderWidth: 1,
+            zoomType: 'xy'
+        },
+        title: {
+            text: ''
+        },
+        xAxis: {
+            gridLineWidth: 1,
+            title: {
+                text: '등락률 (%)'
+            },
+            labels: {
+                format: '{value}%'
+            },
+            plotLines: [{
+                color: 'black',
+                dashStyle: 'dot',
+                width: 2,
+                value: 0,
+                label: {
+                    rotation: 0,
+                    y: 15,
+                    style: {
+                        fontStyle: 'italic'
+                    },
+                    text: '보합'
+                },
+                zIndex: 3
+            }]
+        },
+        yAxis: {
+            startOnTick: false,
+            endOnTick: false,
+            title: {
+                text: '거래량'
+            },
+            labels: {
+                format: '{value}'
+            }
+        },
+        tooltip: {
+            useHTML: true,
+            headerFormat: '<table>',
+            pointFormat: '<tr><th colspan="2"><h3>{point.name} ({point.code})</h3></th></tr>' +
+                '<tr><th>등락률:</th><td>{point.x}%</td></tr>' +
+                '<tr><th>거래량:</th><td>{point.y}</td></tr>',
+            footerFormat: '</table>',
+            followPointer: true
+        },
+        plotOptions: {
+            series: {
+                dataLabels: {
+                    enabled: true,
+                    format: '{point.code}'
+                },
+                cursor: 'pointer',
+                point: {
+                    events: {
+                        click: function() {
+                            selectStockByCode(this.code);
+                        }
+                    }
+                }
+            }
+        },
+        series: [{
+            name: '종목별 등락',
+            data: bubbleData,
+            colorByPoint: true
+        }]
+    });
+}
 
 function populateStockSelect(stocks) {
     const selectElement = document.getElementById('stock-select');

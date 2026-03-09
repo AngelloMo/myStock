@@ -4,13 +4,21 @@
     <meta charset="UTF-8">
     <title>나스닥 100 주가 분석</title>
     <script src="https://code.highcharts.com/stock/highstock.js"></script>
+    <script src="https://code.highcharts.com/highcharts-more.js"></script>
     <script src="https://code.highcharts.com/stock/modules/data.js"></script>
     <script src="https://code.highcharts.com/stock/modules/exporting.js"></script>
     <script src="https://code.highcharts.com/stock/modules/accessibility.js"></script>
     <link rel="stylesheet" href="style.css">
-</head>
-<body>
+    </head>
+    <body>
     <h1>나스닥 100 주가 분석 (NASDAQ 100 Analysis)</h1>
+
+    <!-- 버블 차트 섹션 -->
+    <div id="bubble-section">
+        <h2 style="text-align: center;">나스닥 100 종목 현황 (등락률 vs 거래량)</h2>
+        <div id="bubble-container" style="height: 500px; margin-bottom: 30px;"></div>
+    </div>
+
     <div class="controls">
         <label for="stock-select">종목 선택:</label>
         <input type="text" id="stock-search" placeholder="종목명 또는 티커 검색..." style="margin-right: 10px;">
