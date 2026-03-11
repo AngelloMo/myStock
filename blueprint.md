@@ -28,6 +28,18 @@ This project is a single-page web application that allows users to view historic
 *   The `main.js` contains functions to aggregate daily historical data into weekly and monthly OHLCV data.
 *   Highcharts Stock is used to render responsive and interactive candlestick charts, displaying Open, High, Low, Close, and Volume for the selected stock and timeframe.
 
+## Automation
+
+This project is configured with a GitHub Action (`.github/workflows/daily_update.yml`) that automatically updates the stock data every day.
+
+*   **Schedule**: Runs daily at 00:00 UTC (approximately after the US market close).
+*   **Process**:
+    1.  Sets up a Python environment.
+    2.  Installs dependencies (`requests`, `pandas`, `lxml`, `html5lib`).
+    3.  Runs `generate_stock_data.py` to fetch the latest year of historical data from Stooq.
+    4.  Commits and pushes the updated `stock.json` back to the repository.
+    5.  This push triggers the `deploy.yml` workflow, which redeploys the site to GitHub Pages.
+
 ## How to run:
 
 1.  **Generate `stock.json`**: Run the `generate_stock_data.py` script using `nix-shell --run "python3 generate_stock_data.py"`. This will create the `stock.json` file in the project root.
