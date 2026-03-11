@@ -152,7 +152,7 @@ def generate_stock_data():
                 'code': code.upper().replace('.US', ''),
                 'historicalData': stock_data
             })
-            time.sleep(1) # Be polite to Stooq
+            time.sleep(0.5) # Reduced sleep to be faster but still polite
         except Exception as e:
             print(f"Error fetching data for {name} ({code}): {e}")
 
