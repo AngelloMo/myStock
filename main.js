@@ -22,7 +22,9 @@ const sectorConfig = {
     'MediaComm': { color: '#9370DB', name: '미디어/통신', basis: '콘텐츠, 스트리밍 및 통신 서비스' },
     'Financial': { color: '#4682B4', name: '금융 (Financial)', basis: '은행, 투자 서비스 및 핀테크' },
     'Energy': { color: '#2F4F4F', name: '에너지/화학', basis: '에너지원 개발 및 정제' },
-    'Industrial': { color: '#A9A9A9', name: '산업재/기타', basis: '금융 기술, 물류 및 기타 산업' }
+    'Industrial': { color: '#A9A9A9', name: '산업재/장비', basis: '제조, 기계, 항공우주 및 방산' },
+    'Transport': { color: '#708090', name: '물류/운송', basis: '철도, 항공, 해운 및 택배 물류' },
+    'Utility': { color: '#008080', name: '유틸리티/인프라', basis: '전력, 가스, 수도 및 공공 인프라' }
 };
 
 const stockToSector = {
@@ -34,7 +36,10 @@ const stockToSector = {
     'NFLX': 'MediaComm', 'CMCSA': 'MediaComm', 'CHTR': 'MediaComm', 'WBD': 'MediaComm', 'TMUS': 'MediaComm', 'VZ': 'MediaComm',
     'JPM': 'Financial', 'V': 'Financial', 'MA': 'Financial', 'BAC': 'Financial', 'WFC': 'Financial', 'MS': 'Financial', 'GS': 'Financial', 'BLK': 'Financial', 'AXP': 'Financial',
     'XOM': 'Energy', 'CVX': 'Energy', 'NEE': 'Energy',
-    'HON': 'Industrial', 'CSX': 'Industrial', 'ODFL': 'Industrial', 'PCAR': 'Industrial', 'PYPL': 'Industrial', 'CPAY': 'Industrial', 'VRSK': 'Industrial', 'WBA': 'Industrial', 'WLTW': 'Industrial', 'XEL': 'Industrial', 'EXC': 'Industrial', 'AEP': 'Industrial', 'BKR': 'Industrial', 'CEG': 'Industrial', 'UNP': 'Industrial', 'GE': 'Industrial', 'CAT': 'Industrial', 'UPS': 'Industrial', 'BA': 'Industrial', 'RTX': 'Industrial'
+    'HON': 'Industrial', 'GE': 'Industrial', 'CAT': 'Industrial', 'BA': 'Industrial', 'RTX': 'Industrial', 'MMM': 'Industrial', 'LMT': 'Industrial', 'GD': 'Industrial', 'NOC': 'Industrial',
+    'CSX': 'Transport', 'ODFL': 'Transport', 'UNP': 'Transport', 'UPS': 'Transport', 'FDX': 'Transport', 'DAL': 'Transport', 'UAL': 'Transport',
+    'XEL': 'Utility', 'EXC': 'Utility', 'AEP': 'Utility', 'NEE': 'Utility', 'DUK': 'Utility', 'SO': 'Utility', 'D': 'Utility',
+    'PCAR': 'Industrial', 'PYPL': 'Financial', 'CPAY': 'Financial', 'VRSK': 'Industrial', 'WBA': 'Consumer', 'WLTW': 'Financial', 'BKR': 'Energy', 'CEG': 'Energy'
 };
 
 const sharesProxy = {
@@ -61,12 +66,14 @@ function getSectorId(stock) {
     const name = stock.n.toLowerCase();
     if (stockToSector[code]) return stockToSector[code];
     
-    if (name.includes('bank') || name.includes('financial') || name.includes('insurance') || name.includes('trust')) return 'Financial';
-    if (name.includes('pharma') || name.includes('health') || name.includes('medical') || name.includes('biogen') || name.includes('science')) return 'BioHealth';
-    if (name.includes('energy') || name.includes('oil') || name.includes('gas') || name.includes('petroleum')) return 'Energy';
-    if (name.includes('tech') || name.includes('software') || name.includes('system') || name.includes('digital')) return 'Software';
-    if (name.includes('consumer') || name.includes('retail') || name.includes('store') || name.includes('brand')) return 'Consumer';
-    if (name.includes('comm') || name.includes('tele') || name.includes('media') || name.includes('network')) return 'MediaComm';
+    if (name.includes('bank') || name.includes('financial') || name.includes('insurance') || name.includes('trust') || name.includes('capital')) return 'Financial';
+    if (name.includes('pharma') || name.includes('health') || name.includes('medical') || name.includes('biogen') || name.includes('science') || name.includes('lab')) return 'BioHealth';
+    if (name.includes('energy') || name.includes('oil') || name.includes('gas') || name.includes('petroleum') || name.includes('resources')) return 'Energy';
+    if (name.includes('tech') || name.includes('software') || name.includes('system') || name.includes('digital') || name.includes('cloud')) return 'Software';
+    if (name.includes('consumer') || name.includes('retail') || name.includes('store') || name.includes('brand') || name.includes('beverage') || name.includes('food')) return 'Consumer';
+    if (name.includes('comm') || name.includes('tele') || name.includes('media') || name.includes('network') || name.includes('entertainment')) return 'MediaComm';
+    if (name.includes('electric') || name.includes('power') || name.includes('utility') || name.includes('water') || name.includes('infrastructure')) return 'Utility';
+    if (name.includes('transport') || name.includes('rail') || name.includes('airline') || name.includes('logistics') || name.includes('express')) return 'Transport';
     
     return 'Industrial';
 }
