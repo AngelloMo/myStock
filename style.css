@@ -290,3 +290,70 @@ h1 {
         margin: 10px 0 !important;
     }
 }
+
+/* Mobile Landscape Optimization */
+@media (max-height: 500px) and (orientation: landscape) {
+    body { padding: 5px; }
+    
+    .dashboard-header, #service-description {
+        display: none; /* Hide header and description to save space */
+    }
+    
+    .tabs {
+        margin-bottom: 5px;
+        padding: 2px 0;
+    }
+    
+    .tab-link {
+        padding: 5px;
+        font-size: 0.85em;
+    }
+    
+    .bubble-controls {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: 15px;
+        padding: 5px;
+        margin-bottom: 5px;
+    }
+    
+    .control-group {
+        flex-direction: row;
+        align-items: center;
+        gap: 5px;
+    }
+    
+    .control-group label {
+        display: none; /* Hide labels to save space */
+    }
+
+    .control-group:last-child {
+        flex: 1;
+    }
+    
+    #play-bubble {
+        padding: 5px 15px;
+        width: auto;
+    }
+    
+    .timeline-container {
+        margin: 2px 0;
+    }
+    
+    .chart-container {
+        height: calc(100vh - 100px); /* Maximize chart height */
+        min-height: 250px;
+    }
+
+    .controls {
+        padding: 5px;
+        margin-bottom: 5px;
+        flex-direction: row;
+        gap: 10px;
+    }
+
+    .search-box, .timeframe-box, .date-box {
+        flex: 1;
+    }
+}

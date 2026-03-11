@@ -93,6 +93,11 @@ window.openTab = function(evt, tabName) {
     if (tabName !== 'bubble-tab' && bubbleAnimationInterval) toggleBubbleAnimation();
 };
 
+window.addEventListener('resize', () => {
+    if (bubbleChart) bubbleChart.reflow();
+    if (stockChart) stockChart.reflow();
+});
+
 document.addEventListener('DOMContentLoaded', () => {
     fetch('./stock.json')
         .then(r => r.json())
