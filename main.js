@@ -134,12 +134,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function switchDashboard(category) {
     currentCategory = category;
-    const titleMap = { 'NASDAQ100': '나스닥 100 대시보드', 'SP500': 'S&P 500 대시보드' };
-    const indexCodeMap = { 'NASDAQ100': '^NDX', 'SP500': '^SPX' };
+    const titleMap = { 
+        'NASDAQ100': '나스닥 100 대시보드', 
+        'SP500': 'S&P 500 대시보드',
+        'SP500_EX_NDX': 'S&P 500 (나스닥 100 제외) 대시보드'
+    };
+    const indexCodeMap = { 
+        'NASDAQ100': '^NDX', 
+        'SP500': '^SPX',
+        'SP500_EX_NDX': '^SPX'
+    };
     
     document.getElementById('dashboard-title').textContent = titleMap[category];
     
-    currentCategoryData = allStocksData.filter(s => s.t === category || s.t === 'BOTH' || s.t === undefined);
+    if (category === 'SP500_EX_NDX') {
+        currentCategoryData = allStocksData.filter(s => s.t === 'SP500');
+    } else {
+        currentCategoryData = allStocksData.filter(s => s.t === category || s.t === 'BOTH' || s.t === undefined);
+    }
     
     populateStockSelect(currentCategoryData);
     
