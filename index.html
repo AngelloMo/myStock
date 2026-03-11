@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>미국 증시 분석 대시보드</title>
+    <title>미국 증시 분석 대시보드 - 나스닥 100 & S&P 500 시각화</title>
+    <meta name="description" content="미국 증시의 나스닥 100, S&P 500 지수 및 개별 종목의 수익률과 시가총액 변화를 무빙 버블 차트로 시각화하여 분석합니다.">
     <script src="https://code.highcharts.com/stock/highstock.js"></script>
     <script src="https://code.highcharts.com/highcharts-more.js"></script>
     <script src="https://code.highcharts.com/stock/modules/data.js"></script>
@@ -21,59 +22,76 @@
         <h1 id="dashboard-title">나스닥 100 대시보드</h1>
     </header>
 
-    <div class="tabs">
-        <button class="tab-link active" onclick="openTab(event, 'bubble-tab')">버블차트</button>
-        <button class="tab-link" onclick="openTab(event, 'analysis-tab')">종목분석</button>
-    </div>
+    <main>
+        <section id="service-description" style="padding: 20px; background: #f9f9f9; border-bottom: 1px solid #ddd;">
+            <h2>실시간 미국 증시 시각화 분석</h2>
+            <p>본 서비스는 미국 시장의 주요 지수인 나스닥 100(NASDAQ 100)과 S&P 500의 종목 데이터를 바탕으로, 시간에 따른 수익률 변화와 기업 가치(시가총액)의 상관관계를 직관적인 버블 차트로 제공합니다. 섹터별 분류를 통해 시장의 주도주를 쉽게 파악할 수 있습니다.</p>
+        </section>
 
-    <!-- 1. 무빙 버블차트 탭 -->
-    <div id="bubble-tab" class="tab-content active">
-        <div id="bubble-section">
-            <div class="bubble-controls">
-                <div class="control-group">
-                    <label>기준일:</label>
-                    <input type="date" id="bubble-start-date">
-                </div>
-                <div class="control-group">
-                    <button id="play-bubble">재생</button>
-                    <span id="current-bubble-date"></span>
-                </div>
-                <div class="control-group">
-                    <label>속도:</label>
-                    <input type="range" id="speed-control" min="50" max="1000" value="150" step="50">
-                </div>
-            </div>
-            <div class="timeline-container">
-                <input type="range" id="date-slider" min="0" max="100" value="0">
-            </div>
-            <div id="bubble-container" class="chart-container"></div>
+        <div class="tabs">
+            <button class="tab-link active" onclick="openTab(event, 'bubble-tab')">버블차트</button>
+            <button class="tab-link" onclick="openTab(event, 'analysis-tab')">종목분석</button>
         </div>
-    </div>
 
-    <!-- 2. 종목 분석 탭 -->
-    <div id="analysis-tab" class="tab-content">
-        <div class="controls">
-            <div class="search-box">
-                <input type="text" id="stock-search" placeholder="검색...">
-                <select id="stock-select"></select>
-            </div>
-            <div class="timeframe-box">
-                <button id="timeframe-daily" class="active">일봉</button>
-                <button id="timeframe-weekly">주봉</button>
-                <button id="timeframe-monthly">월봉</button>
-            </div>
-            <div class="date-box">
-                <input type="date" id="start-date">
-                <span>~</span>
-                <input type="date" id="end-date">
+        <!-- 1. 무빙 버블차트 탭 -->
+        <div id="bubble-tab" class="tab-content active">
+            <div id="bubble-section">
+                <div class="bubble-controls">
+                    <div class="control-group">
+                        <label>기준일:</label>
+                        <input type="date" id="bubble-start-date">
+                    </div>
+                    <div class="control-group">
+                        <button id="play-bubble">재생</button>
+                        <span id="current-bubble-date"></span>
+                    </div>
+                    <div class="control-group">
+                        <label>속도:</label>
+                        <input type="range" id="speed-control" min="50" max="1000" value="150" step="50">
+                    </div>
+                </div>
+                <div class="timeline-container">
+                    <input type="range" id="date-slider" min="0" max="100" value="0">
+                </div>
+                <div id="bubble-container" class="chart-container"></div>
             </div>
         </div>
-        
-        <div id="recommendation">
-            <h3><span id="stock-name"></span> (<span id="stock-code"></span>)</h3>
+
+        <!-- 2. 종목 분석 탭 -->
+        <div id="analysis-tab" class="tab-content">
+            <div class="controls">
+                <div class="search-box">
+                    <input type="text" id="stock-search" placeholder="검색...">
+                    <select id="stock-select"></select>
+                </div>
+                <div class="timeframe-box">
+                    <button id="timeframe-daily" class="active">일봉</button>
+                    <button id="timeframe-weekly">주봉</button>
+                    <button id="timeframe-monthly">월봉</button>
+                </div>
+                <div class="date-box">
+                    <input type="date" id="start-date">
+                    <span>~</span>
+                    <input type="date" id="end-date">
+                </div>
+            </div>
+            
+            <div id="recommendation">
+                <h3><span id="stock-name"></span> (<span id="stock-code"></span>)</h3>
+            </div>
+            <div id="container" class="chart-container"></div>
         </div>
-        <div id="container" class="chart-container"></div>
-    </div>
+    </main>
+
+    <footer class="dashboard-footer" style="padding: 20px; background: #333; color: #fff; text-align: center; margin-top: 40px;">
+        <div class="footer-links" style="margin-bottom: 10px;">
+            <a href="about.html" style="color: #fff; margin: 0 10px; text-decoration: none;">소개</a> |
+            <a href="privacy.html" style="color: #fff; margin: 0 10px; text-decoration: none;">개인정보처리방침</a> |
+            <a href="terms.html" style="color: #fff; margin: 0 10px; text-decoration: none;">이용약관</a> |
+            <a href="contact.html" style="color: #fff; margin: 0 10px; text-decoration: none;">문의하기</a>
+        </div>
+        <p>&copy; 2026 미국 증시 분석 대시보드. All rights reserved.</p>
+    </footer>
 
     <script src="main.js"></script>
 </body>
