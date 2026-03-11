@@ -7,10 +7,29 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
+.dashboard-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 5px;
+}
+
+#dashboard-select {
+    padding: 5px 10px;
+    border-radius: 20px;
+    border: 1px solid #1877f2;
+    background: white;
+    color: #1877f2;
+    font-weight: bold;
+    cursor: pointer;
+    outline: none;
+}
+
 h1 {
     text-align: center;
     color: #1877f2;
-    margin: 10px 0;
+    margin: 5px 0;
     font-size: 1.5em;
 }
 
@@ -184,6 +203,11 @@ h1 {
 /* Landscape orientation or tablets */
 @media (min-width: 768px) {
     body { padding: 20px; }
+    .dashboard-header {
+        flex-direction: row;
+        justify-content: center;
+        gap: 20px;
+    }
     h1 { font-size: 2em; }
     .bubble-controls {
         grid-template-columns: auto auto 1fr;

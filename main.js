@@ -1,5 +1,6 @@
 // Global variables
 let allStocksData = [];
+let currentCategoryData = [];
 let currentStock = null;
 let currentChartTimeframe = 'Daily';
 let bubbleChart = null;
@@ -9,6 +10,7 @@ let filteredBubbleDates = [];
 let currentBubbleDateIndex = 0;
 let bubbleAnimationInterval = null;
 let animationSpeed = 300;
+let currentCategory = 'NASDAQ100';
 
 // Sector Mapping & Colors
 const sectorConfig = {
@@ -18,17 +20,21 @@ const sectorConfig = {
     'Consumer': { color: '#32CD32', name: '소비재/리테일', basis: '필수 및 임의 소비재, 대형 유통망' },
     'BioHealth': { color: '#FF69B4', name: '바이오/헬스케어', basis: '제약, 바이오 및 의료 기기 기업' },
     'MediaComm': { color: '#9370DB', name: '미디어/통신', basis: '콘텐츠, 스트리밍 및 통신 서비스' },
+    'Financial': { color: '#4682B4', name: '금융 (Financial)', basis: '은행, 투자 서비스 및 핀테크' },
+    'Energy': { color: '#2F4F4F', name: '에너지/화학', basis: '에너지원 개발 및 정제' },
     'Industrial': { color: '#A9A9A9', name: '산업재/기타', basis: '금융 기술, 물류 및 기타 산업' }
 };
 
 const stockToSector = {
     'AAPL': 'Mag7', 'MSFT': 'Mag7', 'GOOGL': 'Mag7', 'GOOG': 'Mag7', 'AMZN': 'Mag7', 'META': 'Mag7', 'NVDA': 'Mag7', 'TSLA': 'Mag7',
     'AMD': 'Semicon', 'AVGO': 'Semicon', 'QCOM': 'Semicon', 'INTC': 'Semicon', 'TXN': 'Semicon', 'AMAT': 'Semicon', 'LRCX': 'Semicon', 'MU': 'Semicon', 'ASML': 'Semicon', 'ADI': 'Semicon', 'NXPI': 'Semicon', 'MCHP': 'Semicon', 'ON': 'Semicon', 'KLAC': 'Semicon',
-    'ADBE': 'Software', 'PANW': 'Software', 'CDNS': 'Software', 'SNPS': 'Software', 'INTU': 'Software', 'WDAY': 'Software', 'TEAM': 'Software', 'ADSK': 'Software', 'MDB': 'Software', 'CRWD': 'Software', 'ZS': 'Software', 'PLTR': 'Software',
-    'COST': 'Consumer', 'WMT': 'Consumer', 'PEP': 'Consumer', 'MDLZ': 'Consumer', 'MNST': 'Consumer', 'KDP': 'Consumer', 'LULU': 'Consumer', 'MAR': 'Consumer', 'BKNG': 'Consumer', 'ABNB': 'Consumer', 'DASH': 'Consumer', 'PDD': 'Consumer', 'MELI': 'Consumer', 'SBUX': 'Consumer', 'ORLY': 'Consumer', 'ROST': 'Consumer', 'DLTR': 'Consumer',
-    'AMGN': 'BioHealth', 'GILD': 'BioHealth', 'ISRG': 'BioHealth', 'VRTX': 'BioHealth', 'REGN': 'BioHealth', 'DXCM': 'BioHealth', 'IDXX': 'BioHealth', 'AZN': 'BioHealth', 'GEHC': 'BioHealth',
-    'NFLX': 'MediaComm', 'CMCSA': 'MediaComm', 'CHTR': 'MediaComm', 'WBD': 'MediaComm', 'TMUS': 'MediaComm',
-    'HON': 'Industrial', 'CSX': 'Industrial', 'ODFL': 'Industrial', 'PCAR': 'Industrial', 'PYPL': 'Industrial', 'CPAY': 'Industrial', 'VRSK': 'Industrial', 'WBA': 'Industrial', 'WLTW': 'Industrial', 'XEL': 'Industrial', 'EXC': 'Industrial', 'AEP': 'Industrial', 'BKR': 'Industrial', 'CEG': 'Industrial'
+    'ADBE': 'Software', 'PANW': 'Software', 'CDNS': 'Software', 'SNPS': 'Software', 'INTU': 'Software', 'WDAY': 'Software', 'TEAM': 'Software', 'ADSK': 'Software', 'MDB': 'Software', 'CRWD': 'Software', 'ZS': 'Software', 'PLTR': 'Software', 'NOW': 'Software', 'ACN': 'Software', 'IBM': 'Software',
+    'COST': 'Consumer', 'WMT': 'Consumer', 'PEP': 'Consumer', 'MDLZ': 'Consumer', 'MNST': 'Consumer', 'KDP': 'Consumer', 'LULU': 'Consumer', 'MAR': 'Consumer', 'BKNG': 'Consumer', 'ABNB': 'Consumer', 'DASH': 'Consumer', 'PDD': 'Consumer', 'MELI': 'Consumer', 'SBUX': 'Consumer', 'ORLY': 'Consumer', 'ROST': 'Consumer', 'DLTR': 'Consumer', 'NKE': 'Consumer', 'KO': 'Consumer', 'PG': 'Consumer', 'HD': 'Consumer', 'MCD': 'Consumer', 'PM': 'Consumer', 'DIS': 'Consumer', 'LOW': 'Consumer',
+    'AMGN': 'BioHealth', 'GILD': 'BioHealth', 'ISRG': 'BioHealth', 'VRTX': 'BioHealth', 'REGN': 'BioHealth', 'DXCM': 'BioHealth', 'IDXX': 'BioHealth', 'AZN': 'BioHealth', 'LLY': 'BioHealth', 'UNH': 'BioHealth', 'JNJ': 'BioHealth', 'ABBV': 'BioHealth', 'MRK': 'BioHealth', 'TMO': 'BioHealth', 'ABT': 'BioHealth', 'DHR': 'BioHealth', 'PFE': 'BioHealth',
+    'NFLX': 'MediaComm', 'CMCSA': 'MediaComm', 'CHTR': 'MediaComm', 'WBD': 'MediaComm', 'TMUS': 'MediaComm', 'VZ': 'MediaComm',
+    'JPM': 'Financial', 'V': 'Financial', 'MA': 'Financial', 'BAC': 'Financial', 'WFC': 'Financial', 'MS': 'Financial', 'GS': 'Financial', 'BLK': 'Financial', 'AXP': 'Financial',
+    'XOM': 'Energy', 'CVX': 'Energy', 'NEE': 'Energy',
+    'HON': 'Industrial', 'CSX': 'Industrial', 'ODFL': 'Industrial', 'PCAR': 'Industrial', 'PYPL': 'Industrial', 'CPAY': 'Industrial', 'VRSK': 'Industrial', 'WBA': 'Industrial', 'WLTW': 'Industrial', 'XEL': 'Industrial', 'EXC': 'Industrial', 'AEP': 'Industrial', 'BKR': 'Industrial', 'CEG': 'Industrial', 'UNP': 'Industrial', 'GE': 'Industrial', 'CAT': 'Industrial', 'UPS': 'Industrial', 'BA': 'Industrial', 'RTX': 'Industrial'
 };
 
 const sharesProxy = {
@@ -40,9 +46,9 @@ const sharesProxy = {
     'CHTR': 1, 'CPAY': 0.7, 'CPRT': 9, 'CRWD': 2, 'CTAS': 1, 'CTSH': 5, 'DASH': 4, 'DDOG': 3, 'DLTR': 2, 'DXCM': 4,
     'EA': 2, 'EBAY': 5, 'EXC': 10, 'FAST': 5, 'FTNT': 7, 'IDXX': 0.8, 'INTU': 2, 'KDP': 14, 'LULU': 1, 'MAR': 2,
     'MCHP': 5, 'MDB': 0.7, 'MNST': 10, 'NXPI': 2, 'ODFL': 1, 'ON': 4, 'ORLY': 0.6, 'PAYX': 3, 'PCAR': 5, 'PDD': 13,
-    'ROP': 1, 'ROST': 3, 'SNPS': 1, 'TEAM': 2, 'VRSK': 1,
-    'WBA': 8, 'WBD': 24, 'WDAY': 2, 'WLTW': 1, 'WMT': 80,
-    'XEL': 5, 'ZS': 1
+    'ROP': 1, 'ROST': 3, 'SNPS': 1, 'TEAM': 2, 'VRSK': 1, 'WBA': 8, 'WBD': 24, 'WDAY': 2, 'WLTW': 1, 'WMT': 80,
+    'XEL': 5, 'ZS': 1,
+    'JPM': 29, 'LLY': 9, 'V': 21, 'UNH': 9, 'XOM': 44, 'MA': 9, 'JNJ': 24, 'PG': 24, 'HD': 10, 'ABBV': 18, 'CVX': 18, 'MRK': 25, 'BAC': 79, 'KO': 43, 'TMO': 4, 'MCD': 7, 'ACN': 6, 'ABT': 17, 'DHR': 7, 'DIS': 18, 'WFC': 36, 'VZ': 42, 'NEE': 20, 'PFE': 56, 'MS': 16, 'NKE': 15, 'PM': 15, 'UNP': 6, 'IBM': 9, 'GS': 3, 'GE': 11, 'CAT': 5, 'UPS': 9, 'BA': 6, 'BLK': 1.5, 'RTX': 15, 'AXP': 7, 'LOW': 6, 'NOW': 2
 };
 
 function getMarketCap(stockCode, price) {
@@ -59,7 +65,9 @@ window.openTab = function(evt, tabName) {
     if (targetTab) targetTab.classList.add("active");
     if (evt && evt.currentTarget) evt.currentTarget.classList.add("active");
     if (tabName === 'bubble-tab' && bubbleChart) bubbleChart.reflow();
-    if (tabName === 'analysis-tab' && stockChart) stockChart.reflow();
+    if (tabName === 'analysis-tab' && stockChart) {
+        setTimeout(() => { if (stockChart) stockChart.reflow(); }, 10);
+    }
     if (tabName !== 'bubble-tab' && bubbleAnimationInterval) toggleBubbleAnimation();
 };
 
@@ -68,25 +76,16 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(r => r.json())
         .then(data => {
             allStocksData = data;
-            populateStockSelect(allStocksData);
-            const ndxIndex = allStocksData.findIndex(s => s.code === '^NDX');
-            currentStock = ndxIndex !== -1 ? allStocksData[ndxIndex] : allStocksData[0];
-            if (currentStock && currentStock.historicalData) {
-                const sorted = [...currentStock.historicalData].sort((a,b) => new Date(a.Date) - new Date(b.Date));
-                document.getElementById('start-date').value = sorted[0].Date;
-                document.getElementById('end-date').value = sorted[sorted.length-1].Date;
-                const startObj = new Date(sorted[sorted.length-1].Date);
-                startObj.setMonth(startObj.getMonth() - 6);
-                document.getElementById('bubble-start-date').value = startObj.toISOString().split('T')[0];
-                updateStockDisplay(currentStock);
-                renderChart(currentStock, currentChartTimeframe);
-                renderBubbleChart(allStocksData);
-            }
+            switchDashboard(currentCategory);
         });
+
+    document.getElementById('dashboard-select').addEventListener('change', e => {
+        switchDashboard(e.target.value);
+    });
 
     document.getElementById('stock-search').addEventListener('input', e => {
         const q = e.target.value.toLowerCase();
-        populateStockSelect(allStocksData.filter(s => s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q)));
+        populateStockSelect(currentCategoryData.filter(s => s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q)));
     });
 
     ['daily', 'weekly', 'monthly'].forEach(tf => {
@@ -97,8 +96,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('play-bubble').addEventListener('click', toggleBubbleAnimation);
     document.getElementById('speed-control').addEventListener('input', e => {
         animationSpeed = parseInt(e.target.value);
-        document.getElementById('speed-value').textContent = `${animationSpeed}ms`;
-        if (bubbleAnimationInterval) { clearInterval(bubbleAnimationInterval); startAnimationLoop(); }
     });
 
     document.getElementById('date-slider').addEventListener('input', e => {
@@ -112,14 +109,57 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('bubble-start-date').addEventListener('change', () => {
         if (bubbleAnimationInterval) toggleBubbleAnimation();
-        renderBubbleChart(allStocksData);
+        renderBubbleChart(currentCategoryData);
+    });
+
+    document.getElementById('stock-select').addEventListener('change', e => {
+        selectStockByCode(e.target.value);
     });
 });
 
+function switchDashboard(category) {
+    currentCategory = category;
+    const titleMap = { 'NASDAQ100': '나스닥 100 대시보드', 'SP500': 'S&P 500 대시보드' };
+    const indexCodeMap = { 'NASDAQ100': '^NDX', 'SP500': '^SPX' };
+    
+    document.getElementById('dashboard-title').textContent = titleMap[category];
+    
+    // Filter data for the category
+    currentCategoryData = allStocksData.filter(s => s.category === category || s.category === undefined);
+    
+    populateStockSelect(currentCategoryData);
+    
+    const indexCode = indexCodeMap[category];
+    const indexItem = currentCategoryData.find(s => s.code === indexCode);
+    currentStock = indexItem || currentCategoryData[0];
+    
+    if (currentStock && currentStock.historicalData) {
+        const sorted = [...currentStock.historicalData].sort((a,b) => new Date(a.Date) - new Date(b.Date));
+        document.getElementById('start-date').value = sorted[0].Date;
+        document.getElementById('end-date').value = sorted[sorted.length-1].Date;
+        
+        const startObj = new Date(sorted[sorted.length-1].Date);
+        startObj.setMonth(startObj.getMonth() - 6);
+        document.getElementById('bubble-start-date').value = startObj.toISOString().split('T')[0];
+        
+        updateStockDisplay(currentStock);
+        renderChart(currentStock, currentChartTimeframe);
+        renderBubbleChart(currentCategoryData);
+    }
+}
+
 function toggleBubbleAnimation() {
     const btn = document.getElementById('play-bubble');
-    if (bubbleAnimationInterval) { clearInterval(bubbleAnimationInterval); bubbleAnimationInterval = null; btn.textContent = '재생'; }
-    else { if (filteredBubbleDates.length > 0) { btn.textContent = '일시정지'; startAnimationLoop(); } }
+    if (bubbleAnimationInterval) { 
+        clearInterval(bubbleAnimationInterval); 
+        bubbleAnimationInterval = null; 
+        btn.textContent = '재생'; 
+    } else { 
+        if (filteredBubbleDates.length > 0) { 
+            btn.textContent = '일시정지'; 
+            startAnimationLoop(); 
+        } 
+    }
 }
 
 function startAnimationLoop() {
@@ -136,21 +176,21 @@ function startAnimationLoop() {
 function updateBubbleChart(date, duration) {
     if (!bubbleChart) return;
     const startDate = document.getElementById('bubble-start-date').value;
-    const bubbleData = getBubbleDataForDateRange(allStocksData, startDate, date);
+    const bubbleData = getBubbleDataForDateRange(currentCategoryData, startDate, date);
     
-    // Performance Optimization: Update all series first, then redraw once
     Object.keys(sectorConfig).forEach((sectorId, i) => {
         const sectorData = bubbleData.filter(d => d.sectorId === sectorId);
         if (bubbleChart.series[i]) {
             bubbleChart.series[i].setData(sectorData, false, false); 
         }
     });
-    bubbleChart.redraw(false); // Single redraw without animation
+    bubbleChart.redraw(false);
     document.getElementById('current-bubble-date').textContent = date;
 }
 
 function getBubbleDataForDateRange(stocks, startDate, currentDate) {
-    return stocks.filter(s => s.code !== '^NDX').map(stock => {
+    const indices = ['^NDX', '^SPX'];
+    return stocks.filter(s => !indices.includes(s.code)).map(stock => {
         const history = stock.historicalData;
         const currentIdx = history.findIndex(d => d.Date === currentDate);
         const startIdx = history.findIndex(d => d.Date >= startDate);
@@ -170,7 +210,10 @@ function getBubbleDataForDateRange(stocks, startDate, currentDate) {
 
 function selectStockByCode(code) {
     currentStock = allStocksData.find(s => s.code === code);
-    if (currentStock) { updateStockDisplay(currentStock); renderChart(currentStock, currentChartTimeframe); }
+    if (currentStock) { 
+        updateStockDisplay(currentStock); 
+        renderChart(currentStock, currentChartTimeframe); 
+    }
 }
 
 function renderBubbleChart(stocks) {
@@ -183,7 +226,8 @@ function renderBubbleChart(stocks) {
         slider.value = 0;
     }
 
-    const startMCs = stocks.filter(s => s.code !== '^NDX').map(s => {
+    const indices = ['^NDX', '^SPX'];
+    const startMCs = stocks.filter(s => !indices.includes(s.code)).map(s => {
         const idx = s.historicalData ? s.historicalData.findIndex(d => d.Date >= startDate) : -1;
         return idx === -1 ? 0 : getMarketCap(s.code, s.historicalData[idx].Close);
     }).filter(v => v > 0);
@@ -204,7 +248,7 @@ function renderBubbleChart(stocks) {
         title: { text: '' },
         xAxis: {
             gridLineWidth: 1, title: { text: '수익률 (%)', style: { fontWeight: 'bold' } }, 
-            labels: { format: '{value}%' }, min: -100, max: 200,
+            labels: { format: '{value}%' }, min: -50, max: 150,
             plotLines: [{ color: '#ccc', width: 1, value: 0, zIndex: 1 }]
         },
         yAxis: { 
@@ -251,7 +295,8 @@ function updateStockDisplay(s) {
 
 function setTimeframe(tf) {
     document.querySelectorAll('#analysis-tab .controls button').forEach(b => b.classList.remove('active'));
-    if (document.getElementById(`timeframe-${tf.toLowerCase()}`)) document.getElementById(`timeframe-${tf.toLowerCase()}`).classList.add('active');
+    const btnId = `timeframe-${tf.toLowerCase()}`;
+    if (document.getElementById(btnId)) document.getElementById(btnId).classList.add('active');
     currentChartTimeframe = tf;
     if (currentStock) renderChart(currentStock, currentChartTimeframe);
 }
@@ -259,12 +304,14 @@ function setTimeframe(tf) {
 function renderChart(s, tf) {
     const start = document.getElementById('start-date').value;
     const end = document.getElementById('end-date').value;
+    if (!s.historicalData) return;
     let data = s.historicalData.filter(d => (!start || d.Date >= start) && (!end || d.Date <= end));
     if (tf === 'Weekly') data = aggregateToWeekly(data); else if (tf === 'Monthly') data = aggregateToMonthly(data);
     data.sort((a,b) => new Date(a.Date) - new Date(b.Date));
     const ohlc = data.map(d => [new Date(d.Date).getTime(), d.Open, d.High, d.Low, d.Close]);
     const vol = data.map(d => [new Date(d.Date).getTime(), d.Volume]);
-    Highcharts.stockChart('container', {
+    
+    stockChart = Highcharts.stockChart('container', {
         rangeSelector: { enabled: false },
         title: { text: `${s.name} 주가 분석` },
         yAxis: [{ labels: { align: 'right', x: -3 }, title: { text: '주가' }, height: '60%', lineWidth: 2, resize: { enabled: true } },

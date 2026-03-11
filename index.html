@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>나스닥 100 분석 대시보드</title>
+    <title>미국 증시 분석 대시보드</title>
     <script src="https://code.highcharts.com/stock/highstock.js"></script>
     <script src="https://code.highcharts.com/highcharts-more.js"></script>
     <script src="https://code.highcharts.com/stock/modules/data.js"></script>
@@ -12,7 +12,13 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>나스닥 100 대시보드</h1>
+    <header class="dashboard-header">
+        <select id="dashboard-select">
+            <option value="NASDAQ100">나스닥 100 (NASDAQ 100)</option>
+            <option value="SP500">S&P 500 (Standard & Poor's)</option>
+        </select>
+        <h1 id="dashboard-title">나스닥 100 대시보드</h1>
+    </header>
 
     <div class="tabs">
         <button class="tab-link active" onclick="openTab(event, 'bubble-tab')">버블차트</button>
