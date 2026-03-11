@@ -48,12 +48,27 @@ const sharesProxy = {
     'MCHP': 5, 'MDB': 0.7, 'MNST': 10, 'NXPI': 2, 'ODFL': 1, 'ON': 4, 'ORLY': 0.6, 'PAYX': 3, 'PCAR': 5, 'PDD': 13,
     'ROP': 1, 'ROST': 3, 'SNPS': 1, 'TEAM': 2, 'VRSK': 1, 'WBA': 8, 'WBD': 24, 'WDAY': 2, 'WLTW': 1, 'WMT': 80,
     'XEL': 5, 'ZS': 1,
-    'JPM': 29, 'LLY': 9, 'V': 21, 'UNH': 9, 'XOM': 44, 'MA': 9, 'JNJ': 24, 'PG': 24, 'HD': 10, 'ABBV': 18, 'CVX': 18, 'MRK': 25, 'BAC': 79, 'KO': 43, 'TMO': 4, 'MCD': 7, 'ACN': 6, 'ABT': 17, 'DHR': 7, 'DIS': 18, 'WFC': 36, 'VZ': 42, 'NEE': 20, 'PFE': 56, 'MS': 16, 'NKE': 15, 'PM': 15, 'UNP': 6, 'IBM': 9, 'GS': 3, 'GE': 11, 'CAT': 5, 'UPS': 9, 'BA': 6, 'BLK': 1.5, 'RTX': 15, 'AXP': 7, 'LOW': 6, 'NOW': 2
+    'JPM': 29, 'LLY': 9, 'V': 21, 'UNH': 9, 'XOM': 44, 'MA': 9, 'JNJ': 24, 'PG': 24, 'HD': 10, 'ABBV': 18, 'CVX': 18, 'MRK': 25, 'BAC': 79, 'KO': 43, 'TMO': 4, 'MCD': 7, 'ACN': 6, 'ABT': 17, 'DHR': 7, 'DIS': 18, 'WFC': 36, 'VZ': 42, 'NEE': 20, 'PFE': 56, 'MS': 16, 'Nke': 15, 'PM': 15, 'UNP': 6, 'IBM': 9, 'GS': 3, 'GE': 11, 'CAT': 5, 'UPS': 9, 'BA': 6, 'BLK': 1.5, 'RTX': 15, 'AXP': 7, 'LOW': 6, 'NOW': 2
 };
 
 function getMarketCap(stockCode, price) {
     const shares = sharesProxy[stockCode] || 1;
     return Math.round(price * shares * 0.1); 
+}
+
+function getSectorId(stock) {
+    if (stockToSector[stock.code]) return stockToSector[stock.code];
+    
+    // Heuristic for unknown stocks
+    const name = stock.name.toLowerCase();
+    if (name.includes('bank') || name.includes('financial') || name.includes('insurance') || name.includes('trust')) return 'Financial';
+    if (name.includes('pharma') || name.includes('health') || name.includes('medical') || name.includes('biogen') || name.includes('science')) return 'BioHealth';
+    if (name.includes('energy') || name.includes('oil') || name.includes('gas') || name.includes('petroleum')) return 'Energy';
+    if (name.includes('tech') || name.includes('software') || name.includes('system') || name.includes('digital')) return 'Software';
+    if (name.includes('consumer') || name.includes('retail') || name.includes('store') || name.includes('brand')) return 'Consumer';
+    if (name.includes('comm') || name.includes('tele') || name.includes('media') || name.includes('network')) return 'MediaComm';
+    
+    return 'Industrial';
 }
 
 window.openTab = function(evt, tabName) {
@@ -124,8 +139,8 @@ function switchDashboard(category) {
     
     document.getElementById('dashboard-title').textContent = titleMap[category];
     
-    // Filter data for the category
-    currentCategoryData = allStocksData.filter(s => s.category === category || s.category === undefined);
+    // Filter data for the category (Fix: include 'BOTH')
+    currentCategoryData = allStocksData.filter(s => s.category === category || s.category === 'BOTH' || s.category === undefined);
     
     populateStockSelect(currentCategoryData);
     
@@ -199,7 +214,7 @@ function getBubbleDataForDateRange(stocks, startDate, currentDate) {
         const base = history[startIdx];
         const changePercent = Math.round(((current.Close - base.Close) / base.Close) * 100);
         const marketCap = getMarketCap(stock.code, current.Close);
-        const sectorId = stockToSector[stock.code] || 'Industrial';
+        const sectorId = getSectorId(stock);
         return {
             id: stock.code, x: changePercent, y: marketCap, z: current.Volume,
             name: stock.name, code: stock.code, color: sectorConfig[sectorId].color,
@@ -218,6 +233,7 @@ function selectStockByCode(code) {
 
 function renderBubbleChart(stocks) {
     bubbleDates = [...new Set(stocks.flatMap(s => s.historicalData ? s.historicalData.map(d => d.Date) : []))].sort();
+    if (bubbleDates.length === 0) return;
     const startDate = document.getElementById('bubble-start-date').value || bubbleDates[0];
     filteredBubbleDates = bubbleDates.filter(d => d >= startDate);
     const slider = document.getElementById('date-slider');
@@ -235,6 +251,7 @@ function renderBubbleChart(stocks) {
     const minMC = startMCs.length > 0 ? Math.min(...startMCs) : 1;
 
     currentBubbleDateIndex = bubbleDates.indexOf(filteredBubbleDates[0]);
+    if (currentBubbleDateIndex === -1) currentBubbleDateIndex = 0;
     
     const series = Object.keys(sectorConfig).map(sectorId => ({
         name: sectorConfig[sectorId].name,
