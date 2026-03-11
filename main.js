@@ -32,7 +32,7 @@ const stockToSector = {
     'AMD': 'Semicon', 'AVGO': 'Semicon', 'QCOM': 'Semicon', 'INTC': 'Semicon', 'TXN': 'Semicon', 'AMAT': 'Semicon', 'LRCX': 'Semicon', 'MU': 'Semicon', 'ASML': 'Semicon', 'ADI': 'Semicon', 'NXPI': 'Semicon', 'MCHP': 'Semicon', 'ON': 'Semicon', 'KLAC': 'Semicon',
     'ADBE': 'Software', 'PANW': 'Software', 'CDNS': 'Software', 'SNPS': 'Software', 'INTU': 'Software', 'WDAY': 'Software', 'TEAM': 'Software', 'ADSK': 'Software', 'MDB': 'Software', 'CRWD': 'Software', 'ZS': 'Software', 'PLTR': 'Software', 'NOW': 'Software', 'ACN': 'Software', 'IBM': 'Software',
     'COST': 'Consumer', 'WMT': 'Consumer', 'PEP': 'Consumer', 'MDLZ': 'Consumer', 'MNST': 'Consumer', 'KDP': 'Consumer', 'LULU': 'Consumer', 'MAR': 'Consumer', 'BKNG': 'Consumer', 'ABNB': 'Consumer', 'DASH': 'Consumer', 'PDD': 'Consumer', 'MELI': 'Consumer', 'SBUX': 'Consumer', 'ORLY': 'Consumer', 'ROST': 'Consumer', 'DLTR': 'Consumer', 'NKE': 'Consumer', 'KO': 'Consumer', 'PG': 'Consumer', 'HD': 'Consumer', 'MCD': 'Consumer', 'PM': 'Consumer', 'DIS': 'Consumer', 'LOW': 'Consumer',
-    'AMGN': 'BioHealth', 'GILD': 'BioHealth', 'ISRG': 'BioHealth', 'VRTX': 'BioHealth', 'REGN': 'BioHealth', 'DXCM': 'BioHealth', 'IDXX': 'BioHealth', 'AZN': 'BioHealth', 'LLY': 'BioHealth', 'UNH': 'BioHealth', 'JNJ': 'BioHealth', 'ABBV': 'BioHealth', 'MRK': 'BioHealth', 'TMO': 'BioHealth', 'ABT': 'BioHealth', 'DHR': 'BioHealth', 'PFE': 'BioHealth',
+    'AMGN': 'BioHealth', 'GILD': 'BioHealth', 'ISRG': 'BioHealth', 'VRTX': 'BioHealth', 'REGN': 'BioHealth', 'DXCM': 'BioHealth', 'IDXX': 'BioHealth', 'AZN': 'BioHealth', 'LLY': 'BioHealth', 'UNH': 'BioHealth', 'JNJ': 'BioHealth', 'ABBV': 'BioHealth', 'MRK': 'BioHealth', 'TMO': 'BioHealth', 'ABT': 'BioHealth', 'DHR': 'BioHealth', 'PFE': 'BioHealth', 'MRNA': 'BioHealth',
     'NFLX': 'MediaComm', 'CMCSA': 'MediaComm', 'CHTR': 'MediaComm', 'WBD': 'MediaComm', 'TMUS': 'MediaComm', 'VZ': 'MediaComm',
     'JPM': 'Financial', 'V': 'Financial', 'MA': 'Financial', 'BAC': 'Financial', 'WFC': 'Financial', 'MS': 'Financial', 'GS': 'Financial', 'BLK': 'Financial', 'AXP': 'Financial',
     'XOM': 'Energy', 'CVX': 'Energy', 'NEE': 'Energy',
@@ -67,7 +67,7 @@ function getSectorId(stock) {
     if (stockToSector[code]) return stockToSector[code];
     
     if (name.includes('bank') || name.includes('financial') || name.includes('insurance') || name.includes('trust') || name.includes('capital')) return 'Financial';
-    if (name.includes('pharma') || name.includes('health') || name.includes('medical') || name.includes('biogen') || name.includes('science') || name.includes('lab')) return 'BioHealth';
+    if (name.includes('pharma') || name.includes('health') || name.includes('medical') || name.includes('biogen') || name.includes('science') || name.includes('lab') || name.includes('biotech') || name.includes('therapeutics')) return 'BioHealth';
     if (name.includes('energy') || name.includes('oil') || name.includes('gas') || name.includes('petroleum') || name.includes('resources')) return 'Energy';
     if (name.includes('tech') || name.includes('software') || name.includes('system') || name.includes('digital') || name.includes('cloud')) return 'Software';
     if (name.includes('consumer') || name.includes('retail') || name.includes('store') || name.includes('brand') || name.includes('beverage') || name.includes('food')) return 'Consumer';
@@ -296,7 +296,8 @@ function renderBubbleChart(stocks) {
             pointFormat: '<tr><th colspan="2" style="font-size:1.1em; color:{point.color}">{point.name} ({point.code})</th></tr>' +
                          '<tr><td>섹터:</td><td style="text-align:right"><b>{point.sectorName}</b></td></tr>' +
                          '<tr><td>수익률:</td><td style="text-align:right"><b>{point.x}%</b></td></tr>' +
-                         '<tr><td>추정시총:</td><td style="text-align:right"><b>${point.y}B</b></td></tr>',
+                         '<tr><td>추정시총:</td><td style="text-align:right"><b>${point.y}B</b></td></tr>' +
+                         '<tr><td>거래량:</td><td style="text-align:right"><b>{point.z}</b></td></tr>',
             footerFormat: '</table>',
             followPointer: true
         },
