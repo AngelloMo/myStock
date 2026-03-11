@@ -7,11 +7,16 @@ import csv
 import pandas as pd
 
 def get_sp500_tickers():
-    """Fetches S&P 500 tickers from Wikipedia."""
+    """Fetches S&P 500 tickers from Wikipedia with User-Agent to avoid 403."""
     url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
     try:
-        table = pd.read_html(url)
-        df = table[0]
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        tables = pd.read_html(StringIO(response.text))
+        df = tables[0]
         tickers = []
         for _, row in df.iterrows():
             symbol = row['Symbol'].replace('.', '-') # Stooq/Yahoo compatibility
@@ -20,13 +25,14 @@ def get_sp500_tickers():
                 'code': f"{symbol.lower()}.us",
                 'category': 'SP500'
             })
+        print(f"Successfully fetched {len(tickers)} S&P 500 tickers from Wikipedia.")
         return tickers
     except Exception as e:
         print(f"Error fetching S&P 500 list: {e}")
         return []
 
 def generate_stock_data():
-    # Base NASDAQ 100 components (Manual list as it's more stable for this dashboard)
+    # Base NASDAQ 100 components
     nasdaq100_configs = [
         {'name': '나스닥 100 지수 (NASDAQ 100 Index)', 'code': '^ndx', 'category': 'NASDAQ100'},
         {'name': 'Apple Inc.', 'code': 'aapl.us', 'category': 'NASDAQ100'},
@@ -137,24 +143,27 @@ def generate_stock_data():
         if code not in unique_codes:
             unique_codes[code] = config
         else:
-            # If a stock is in both, mark it as both or just keep first
+            # If a stock is in both, mark it as BOTH to be visible in both dashboards
             if unique_codes[code]['category'] != config['category']:
                 unique_codes[code]['category'] = 'BOTH'
 
     print(f"Total unique stocks to fetch: {len(unique_codes)}")
 
-    for code, config in unique_codes.items():
+    # FETCH LIMIT for safety and time - fetching 500+ takes a while. 
+    # For now, let's fetch ALL as requested, but maybe with a slightly faster pace or skipping failures quickly.
+    
+    for i, (code, config) in enumerate(unique_codes.items()):
         name = config['name']
         category = config['category']
 
-        print(f"Fetching data for {name} ({code})...")
+        print(f"[{i+1}/{len(unique_codes)}] Fetching data for {name} ({code})...")
         try:
             url = f"https://stooq.com/q/d/l/?s={code}&i=d"
             response = requests.get(url)
             response.raise_for_status()
 
             if "Date,Open,High,Low,Close,Volume" not in response.text:
-                 print(f"Invalid data format for {name} ({code})")
+                 print(f"   Invalid data format for {name} ({code})")
                  continue
 
             csv_file = StringIO(response.text)
@@ -181,7 +190,7 @@ def generate_stock_data():
                     })
 
             if not stock_data:
-                print(f"No recent data found for {name} ({code})")
+                print(f"   No recent data found for {name} ({code})")
                 continue
 
             stock_data.sort(key=lambda x: x['Date'])
@@ -192,10 +201,10 @@ def generate_stock_data():
                 'category': category,
                 'historicalData': stock_data
             })
-            # Respect rate limits - 500+ requests need careful pacing
-            time.sleep(0.2) 
+            # Pacing - slightly faster to finish in reasonable time
+            time.sleep(0.1) 
         except Exception as e:
-            print(f"Error fetching data for {name} ({code}): {e}")
+            print(f"   Error fetching data for {name} ({code}): {e}")
 
     with open('stock.json', 'w', encoding='utf-8') as f:
         json.dump(all_stock_data, f, ensure_ascii=False, indent=4)
