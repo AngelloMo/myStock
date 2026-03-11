@@ -48,7 +48,7 @@ const sharesProxy = {
     'MCHP': 5, 'MDB': 0.7, 'MNST': 10, 'NXPI': 2, 'ODFL': 1, 'ON': 4, 'ORLY': 0.6, 'PAYX': 3, 'PCAR': 5, 'PDD': 13,
     'ROP': 1, 'ROST': 3, 'SNPS': 1, 'TEAM': 2, 'VRSK': 1, 'WBA': 8, 'WBD': 24, 'WDAY': 2, 'WLTW': 1, 'WMT': 80,
     'XEL': 5, 'ZS': 1,
-    'JPM': 29, 'LLY': 9, 'V': 21, 'UNH': 9, 'XOM': 44, 'MA': 9, 'JNJ': 24, 'PG': 24, 'HD': 10, 'ABBV': 18, 'CVX': 18, 'MRK': 25, 'BAC': 79, 'KO': 43, 'TMO': 4, 'MCD': 7, 'ACN': 6, 'ABT': 17, 'DHR': 7, 'DIS': 18, 'WFC': 36, 'VZ': 42, 'NEE': 20, 'PFE': 56, 'MS': 16, 'Nke': 15, 'PM': 15, 'UNP': 6, 'IBM': 9, 'GS': 3, 'GE': 11, 'CAT': 5, 'UPS': 9, 'BA': 6, 'BLK': 1.5, 'RTX': 15, 'AXP': 7, 'LOW': 6, 'NOW': 2
+    'JPM': 29, 'LLY': 9, 'V': 21, 'UNH': 9, 'XOM': 44, 'MA': 9, 'JNJ': 24, 'PG': 24, 'HD': 10, 'ABBV': 18, 'CVX': 18, 'MRK': 25, 'BAC': 79, 'KO': 43, 'TMO': 4, 'MCD': 7, 'ACN': 6, 'ABT': 17, 'DHR': 7, 'DIS': 18, 'WFC': 36, 'VZ': 42, 'NEE': 20, 'PFE': 56, 'MS': 16, 'NKE': 15, 'PM': 15, 'UNP': 6, 'IBM': 9, 'GS': 3, 'GE': 11, 'CAT': 5, 'UPS': 9, 'BA': 6, 'BLK': 1.5, 'RTX': 15, 'AXP': 7, 'LOW': 6, 'NOW': 2
 };
 
 function getMarketCap(stockCode, price) {
@@ -57,10 +57,10 @@ function getMarketCap(stockCode, price) {
 }
 
 function getSectorId(stock) {
-    if (stockToSector[stock.code]) return stockToSector[stock.code];
+    const code = stock.s;
+    const name = stock.n.toLowerCase();
+    if (stockToSector[code]) return stockToSector[code];
     
-    // Heuristic for unknown stocks
-    const name = stock.name.toLowerCase();
     if (name.includes('bank') || name.includes('financial') || name.includes('insurance') || name.includes('trust')) return 'Financial';
     if (name.includes('pharma') || name.includes('health') || name.includes('medical') || name.includes('biogen') || name.includes('science')) return 'BioHealth';
     if (name.includes('energy') || name.includes('oil') || name.includes('gas') || name.includes('petroleum')) return 'Energy';
@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('stock-search').addEventListener('input', e => {
         const q = e.target.value.toLowerCase();
-        populateStockSelect(currentCategoryData.filter(s => s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q)));
+        populateStockSelect(currentCategoryData.filter(s => s.n.toLowerCase().includes(q) || s.s.toLowerCase().includes(q)));
     });
 
     ['daily', 'weekly', 'monthly'].forEach(tf => {
@@ -139,21 +139,20 @@ function switchDashboard(category) {
     
     document.getElementById('dashboard-title').textContent = titleMap[category];
     
-    // Filter data for the category (Fix: include 'BOTH')
-    currentCategoryData = allStocksData.filter(s => s.category === category || s.category === 'BOTH' || s.category === undefined);
+    currentCategoryData = allStocksData.filter(s => s.t === category || s.t === 'BOTH' || s.t === undefined);
     
     populateStockSelect(currentCategoryData);
     
     const indexCode = indexCodeMap[category];
-    const indexItem = currentCategoryData.find(s => s.code === indexCode);
+    const indexItem = currentCategoryData.find(s => s.s === indexCode);
     currentStock = indexItem || currentCategoryData[0];
     
-    if (currentStock && currentStock.historicalData) {
-        const sorted = [...currentStock.historicalData].sort((a,b) => new Date(a.Date) - new Date(b.Date));
-        document.getElementById('start-date').value = sorted[0].Date;
-        document.getElementById('end-date').value = sorted[sorted.length-1].Date;
+    if (currentStock && currentStock.h) {
+        const sorted = [...currentStock.h].sort((a,b) => new Date(a.d) - new Date(b.d));
+        document.getElementById('start-date').value = sorted[0].d;
+        document.getElementById('end-date').value = sorted[sorted.length-1].d;
         
-        const startObj = new Date(sorted[sorted.length-1].Date);
+        const startObj = new Date(sorted[sorted.length-1].d);
         startObj.setMonth(startObj.getMonth() - 6);
         document.getElementById('bubble-start-date').value = startObj.toISOString().split('T')[0];
         
@@ -205,26 +204,26 @@ function updateBubbleChart(date, duration) {
 
 function getBubbleDataForDateRange(stocks, startDate, currentDate) {
     const indices = ['^NDX', '^SPX'];
-    return stocks.filter(s => !indices.includes(s.code)).map(stock => {
-        const history = stock.historicalData;
-        const currentIdx = history.findIndex(d => d.Date === currentDate);
-        const startIdx = history.findIndex(d => d.Date >= startDate);
+    return stocks.filter(s => !indices.includes(s.s)).map(stock => {
+        const history = stock.h;
+        const currentIdx = history.findIndex(item => item.d === currentDate);
+        const startIdx = history.findIndex(item => item.d >= startDate);
         if (currentIdx === -1 || startIdx === -1 || currentIdx < startIdx) return null;
         const current = history[currentIdx];
         const base = history[startIdx];
-        const changePercent = Math.round(((current.Close - base.Close) / base.Close) * 100);
-        const marketCap = getMarketCap(stock.code, current.Close);
+        const changePercent = Math.round(((current.c - base.c) / base.c) * 100);
+        const marketCap = getMarketCap(stock.s, current.c);
         const sectorId = getSectorId(stock);
         return {
-            id: stock.code, x: changePercent, y: marketCap, z: current.Volume,
-            name: stock.name, code: stock.code, color: sectorConfig[sectorId].color,
+            id: stock.s, x: changePercent, y: marketCap, z: current.v,
+            name: stock.n, code: stock.s, color: sectorConfig[sectorId].color,
             sectorId: sectorId, sectorName: sectorConfig[sectorId].name, basis: sectorConfig[sectorId].basis
         };
     }).filter(d => d !== null);
 }
 
 function selectStockByCode(code) {
-    currentStock = allStocksData.find(s => s.code === code);
+    currentStock = allStocksData.find(s => s.s === code);
     if (currentStock) { 
         updateStockDisplay(currentStock); 
         renderChart(currentStock, currentChartTimeframe); 
@@ -232,7 +231,7 @@ function selectStockByCode(code) {
 }
 
 function renderBubbleChart(stocks) {
-    bubbleDates = [...new Set(stocks.flatMap(s => s.historicalData ? s.historicalData.map(d => d.Date) : []))].sort();
+    bubbleDates = [...new Set(stocks.flatMap(s => s.h ? s.h.map(item => item.d) : []))].sort();
     if (bubbleDates.length === 0) return;
     const startDate = document.getElementById('bubble-start-date').value || bubbleDates[0];
     filteredBubbleDates = bubbleDates.filter(d => d >= startDate);
@@ -243,9 +242,9 @@ function renderBubbleChart(stocks) {
     }
 
     const indices = ['^NDX', '^SPX'];
-    const startMCs = stocks.filter(s => !indices.includes(s.code)).map(s => {
-        const idx = s.historicalData ? s.historicalData.findIndex(d => d.Date >= startDate) : -1;
-        return idx === -1 ? 0 : getMarketCap(s.code, s.historicalData[idx].Close);
+    const startMCs = stocks.filter(s => !indices.includes(s.s)).map(s => {
+        const idx = s.h ? s.h.findIndex(item => item.d >= startDate) : -1;
+        return idx === -1 ? 0 : getMarketCap(s.s, s.h[idx].c);
     }).filter(v => v > 0);
     const maxMC = startMCs.length > 0 ? Math.max(...startMCs) : 1000;
     const minMC = startMCs.length > 0 ? Math.min(...startMCs) : 1;
@@ -301,13 +300,13 @@ function populateStockSelect(stocks) {
     const el = document.getElementById('stock-select');
     if (!el) return;
     el.innerHTML = '';
-    stocks.forEach(s => { const opt = document.createElement('option'); opt.value = s.code; opt.textContent = `${s.name} (${s.code})`; el.appendChild(opt); });
+    stocks.forEach(s => { const opt = document.createElement('option'); opt.value = s.s; opt.textContent = `${s.n} (${s.s})`; el.appendChild(opt); });
 }
 
 function updateStockDisplay(s) {
-    if (document.getElementById('stock-name')) document.getElementById('stock-name').textContent = s.name;
-    if (document.getElementById('stock-code')) document.getElementById('stock-code').textContent = s.code;
-    if (document.getElementById('stock-select')) document.getElementById('stock-select').value = s.code;
+    if (document.getElementById('stock-name')) document.getElementById('stock-name').textContent = s.n;
+    if (document.getElementById('stock-code')) document.getElementById('stock-code').textContent = s.s;
+    if (document.getElementById('stock-select')) document.getElementById('stock-select').value = s.s;
 }
 
 function setTimeframe(tf) {
@@ -321,19 +320,19 @@ function setTimeframe(tf) {
 function renderChart(s, tf) {
     const start = document.getElementById('start-date').value;
     const end = document.getElementById('end-date').value;
-    if (!s.historicalData) return;
-    let data = s.historicalData.filter(d => (!start || d.Date >= start) && (!end || d.Date <= end));
+    if (!s.h) return;
+    let data = s.h.filter(item => (!start || item.d >= start) && (!end || item.d <= end));
     if (tf === 'Weekly') data = aggregateToWeekly(data); else if (tf === 'Monthly') data = aggregateToMonthly(data);
-    data.sort((a,b) => new Date(a.Date) - new Date(b.Date));
-    const ohlc = data.map(d => [new Date(d.Date).getTime(), d.Open, d.High, d.Low, d.Close]);
-    const vol = data.map(d => [new Date(d.Date).getTime(), d.Volume]);
+    data.sort((a,b) => new Date(a.d) - new Date(b.d));
+    const ohlc = data.map(item => [new Date(item.d).getTime(), item.o, item.h, item.l, item.c]);
+    const vol = data.map(item => [new Date(item.d).getTime(), item.v]);
     
     stockChart = Highcharts.stockChart('container', {
         rangeSelector: { enabled: false },
-        title: { text: `${s.name} 주가 분석` },
+        title: { text: `${s.n} 주가 분석` },
         yAxis: [{ labels: { align: 'right', x: -3 }, title: { text: '주가' }, height: '60%', lineWidth: 2, resize: { enabled: true } },
                 { labels: { align: 'right', x: -3 }, title: { text: '거래량' }, top: '65%', height: '35%', offset: 0, lineWidth: 2 }],
-        series: [{ type: 'candlestick', name: s.name, id: s.code, data: ohlc, color: '#0000FF', upColor: '#FF0000' },
+        series: [{ type: 'candlestick', name: s.n, id: s.s, data: ohlc, color: '#0000FF', upColor: '#FF0000' },
                 { type: 'column', name: 'Volume', data: vol, yAxis: 1 }]
     });
 }
@@ -342,8 +341,8 @@ function aggregateToWeekly(data) {
     const res = []; let week = [];
     data.forEach((d, i) => {
         week.push(d); const next = data[i+1];
-        if (!next || new Date(next.Date).getDay() === 1) {
-            res.push({ Date: week[week.length-1].Date, Open: week[0].Open, High: Math.max(...week.map(w => w.High)), Low: Math.min(...week.map(w => w.Low)), Close: week[week.length-1].Close, Volume: week.reduce((s, w) => s + w.Volume, 0) });
+        if (!next || new Date(next.d).getDay() === 1) {
+            res.push({ d: week[week.length-1].d, o: week[0].o, h: Math.max(...week.map(w => w.h)), l: Math.min(...week.map(w => w.l)), c: week[week.length-1].c, v: week.reduce((s, w) => s + w.v, 0) });
             week = [];
         }
     });
@@ -354,8 +353,8 @@ function aggregateToMonthly(data) {
     const res = []; let mon = [];
     data.forEach((d, i) => {
         mon.push(d); const next = data[i+1];
-        if (!next || new Date(next.Date).getMonth() !== new Date(d.Date).getMonth()) {
-            res.push({ Date: mon[mon.length-1].Date, Open: mon[0].Open, High: Math.max(...mon.map(m => m.High)), Low: Math.min(...mon.map(m => m.Low)), Close: mon[mon.length-1].Close, Volume: mon.reduce((s, m) => s + m.Volume, 0) });
+        if (!next || new Date(next.d).getMonth() !== new Date(d.d).getMonth()) {
+            res.push({ d: mon[mon.length-1].d, o: mon[0].o, h: Math.max(...mon.map(m => m.h)), l: Math.min(...mon.map(m => m.l)), c: mon[mon.length-1].c, v: mon.reduce((s, m) => s + m.v, 0) });
             mon = [];
         }
     });

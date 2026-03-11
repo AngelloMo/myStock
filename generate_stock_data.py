@@ -7,7 +7,6 @@ import csv
 import pandas as pd
 
 def get_sp500_tickers():
-    """Fetches S&P 500 tickers from Wikipedia with User-Agent to avoid 403."""
     url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -19,20 +18,18 @@ def get_sp500_tickers():
         df = tables[0]
         tickers = []
         for _, row in df.iterrows():
-            symbol = row['Symbol'].replace('.', '-') # Stooq/Yahoo compatibility
+            symbol = row['Symbol'].replace('.', '-')
             tickers.append({
                 'name': row['Security'],
                 'code': f"{symbol.lower()}.us",
                 'category': 'SP500'
             })
-        print(f"Successfully fetched {len(tickers)} S&P 500 tickers from Wikipedia.")
         return tickers
     except Exception as e:
         print(f"Error fetching S&P 500 list: {e}")
         return []
 
 def generate_stock_data():
-    # Base NASDAQ 100 components
     nasdaq100_configs = [
         {'name': '나스닥 100 지수 (NASDAQ 100 Index)', 'code': '^ndx', 'category': 'NASDAQ100'},
         {'name': 'Apple Inc.', 'code': 'aapl.us', 'category': 'NASDAQ100'},
@@ -129,41 +126,34 @@ def generate_stock_data():
     print("Fetching S&P 500 ticker list...")
     sp500_configs = get_sp500_tickers()
     sp500_index = [{'name': 'S&P 500 지수 (S&P 500 Index)', 'code': '^spx', 'category': 'SP500'}]
-    
     all_configs = nasdaq100_configs + sp500_index + sp500_configs
 
     all_stock_data = []
     today = datetime.date.today()
-    three_years_ago = today - datetime.timedelta(days=3*365)
+    # OPTIMIZATION: Reduce from 3 years to 1 year for size constraint (25MB limit)
+    start_date_limit = today - datetime.timedelta(days=365)
 
-    # Use unique codes to avoid double fetching
     unique_codes = {}
     for config in all_configs:
         code = config['code']
         if code not in unique_codes:
             unique_codes[code] = config
         else:
-            # If a stock is in both, mark it as BOTH to be visible in both dashboards
             if unique_codes[code]['category'] != config['category']:
                 unique_codes[code]['category'] = 'BOTH'
 
     print(f"Total unique stocks to fetch: {len(unique_codes)}")
 
-    # FETCH LIMIT for safety and time - fetching 500+ takes a while. 
-    # For now, let's fetch ALL as requested, but maybe with a slightly faster pace or skipping failures quickly.
-    
     for i, (code, config) in enumerate(unique_codes.items()):
         name = config['name']
         category = config['category']
-
-        print(f"[{i+1}/{len(unique_codes)}] Fetching data for {name} ({code})...")
+        print(f"[{i+1}/{len(unique_codes)}] Fetching {name} ({code})...")
         try:
             url = f"https://stooq.com/q/d/l/?s={code}&i=d"
             response = requests.get(url)
             response.raise_for_status()
 
             if "Date,Open,High,Low,Close,Volume" not in response.text:
-                 print(f"   Invalid data format for {name} ({code})")
                  continue
 
             csv_file = StringIO(response.text)
@@ -171,44 +161,42 @@ def generate_stock_data():
 
             stock_data = []
             for row in reader:
-                if not all(k in row and row[k] for k in ['Date', 'Open', 'High', 'Low', 'Close', 'Volume']):
-                    continue
-                
                 try:
                     row_date = datetime.datetime.strptime(row['Date'], '%Y-%m-%d').date()
-                except ValueError:
+                    if row_date >= start_date_limit:
+                        stock_data.append({
+                            'd': row['Date'], # Short keys to save space
+                            'o': round(float(row['Open']), 2),
+                            'h': round(float(row['High']), 2),
+                            'l': round(float(row['Low']), 2),
+                            'c': round(float(row['Close']), 2),
+                            'v': int(float(row['Volume'])) if row['Volume'] else 0
+                        })
+                except:
                     continue
 
-                if row_date >= three_years_ago:
-                    stock_data.append({
-                        'Date': row['Date'],
-                        'Open': round(float(row['Open']), 2),
-                        'High': round(float(row['High']), 2),
-                        'Low': round(float(row['Low']), 2),
-                        'Close': round(float(row['Close']), 2),
-                        'Volume': int(float(row['Volume'])) if row['Volume'] else 0
-                    })
-
             if not stock_data:
-                print(f"   No recent data found for {name} ({code})")
                 continue
 
-            stock_data.sort(key=lambda x: x['Date'])
+            stock_data.sort(key=lambda x: x['d'])
 
             all_stock_data.append({
-                'name': name,
-                'code': code.upper().replace('.US', ''),
-                'category': category,
-                'historicalData': stock_data
+                'n': name,
+                's': code.upper().replace('.US', ''),
+                't': category,
+                'h': stock_data
             })
-            # Pacing - slightly faster to finish in reasonable time
-            time.sleep(0.1) 
+            time.sleep(0.05) 
         except Exception as e:
-            print(f"   Error fetching data for {name} ({code}): {e}")
+            print(f"   Error: {e}")
 
+    # Minify JSON output (no separators, no indent)
     with open('stock.json', 'w', encoding='utf-8') as f:
-        json.dump(all_stock_data, f, ensure_ascii=False, indent=4)
-    print(f"stock.json generated successfully with data for {len(all_stock_data)} stocks.")
+        json.dump(all_stock_data, f, ensure_ascii=False, separators=(',', ':'))
+    
+    import os
+    size_mb = os.path.getsize('stock.json') / (1024 * 1024)
+    print(f"stock.json generated. Size: {size_mb:.2f} MB")
 
 if __name__ == '__main__':
     generate_stock_data()
