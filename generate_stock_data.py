@@ -4,11 +4,30 @@ import datetime
 import time
 from io import StringIO
 import csv
+import pandas as pd
+
+def get_sp500_tickers():
+    """Fetches S&P 500 tickers from Wikipedia."""
+    url = 'https://en.wikipedia.org/wiki/List_of_S%26P_500_companies'
+    try:
+        table = pd.read_html(url)
+        df = table[0]
+        tickers = []
+        for _, row in df.iterrows():
+            symbol = row['Symbol'].replace('.', '-') # Stooq/Yahoo compatibility
+            tickers.append({
+                'name': row['Security'],
+                'code': f"{symbol.lower()}.us",
+                'category': 'SP500'
+            })
+        return tickers
+    except Exception as e:
+        print(f"Error fetching S&P 500 list: {e}")
+        return []
 
 def generate_stock_data():
-    # Organized by category
-    stock_configs = [
-        # NASDAQ 100
+    # Base NASDAQ 100 components (Manual list as it's more stable for this dashboard)
+    nasdaq100_configs = [
         {'name': '나스닥 100 지수 (NASDAQ 100 Index)', 'code': '^ndx', 'category': 'NASDAQ100'},
         {'name': 'Apple Inc.', 'code': 'aapl.us', 'category': 'NASDAQ100'},
         {'name': 'Microsoft Corporation', 'code': 'msft.us', 'category': 'NASDAQ100'},
@@ -47,7 +66,6 @@ def generate_stock_data():
         {'name': 'MercadoLibre, Inc.', 'code': 'meli.us', 'category': 'NASDAQ100'},
         {'name': 'Airbnb, Inc.', 'code': 'abnb.us', 'category': 'NASDAQ100'},
         {'name': 'ASML Holding N.V.', 'code': 'asml.us', 'category': 'NASDAQ100'},
-        {'name': 'KLA Corporation', 'code': 'kla.us', 'category': 'NASDAQ100'},
         {'name': 'Palo Alto Networks, Inc.', 'code': 'panw.us', 'category': 'NASDAQ100'},
         {'name': 'Palantir Technologies Inc.', 'code': 'pltr.us', 'category': 'NASDAQ100'},
         {'name': 'MicroStrategy Incorporated', 'code': 'mstr.us', 'category': 'NASDAQ100'},
@@ -95,81 +113,35 @@ def generate_stock_data():
         {'name': 'Synopsys, Inc.', 'code': 'snps.us', 'category': 'NASDAQ100'},
         {'name': 'Atlassian Corporation', 'code': 'team.us', 'category': 'NASDAQ100'},
         {'name': 'Verisk Analytics, Inc.', 'code': 'vrsk.us', 'category': 'NASDAQ100'},
-        {'name': 'Walgreens Boots Alliance, Inc.', 'code': 'wba.us', 'category': 'NASDAQ100'},
         {'name': 'Warner Bros. Discovery, Inc.', 'code': 'wbd.us', 'category': 'NASDAQ100'},
         {'name': 'Workday, Inc.', 'code': 'wday.us', 'category': 'NASDAQ100'},
-        {'name': 'Willis Towers Watson Public Limited Co.', 'code': 'wltw.us', 'category': 'NASDAQ100'},
         {'name': 'Walmart Inc.', 'code': 'wmt.us', 'category': 'NASDAQ100'},
         {'name': 'Xcel Energy Inc.', 'code': 'xel.us', 'category': 'NASDAQ100'},
         {'name': 'Zscaler, Inc.', 'code': 'zs.us', 'category': 'NASDAQ100'},
-
-        # S&P 500 (Adding major ones not in NDX)
-        {'name': 'S&P 500 지수 (S&P 500 Index)', 'code': '^spx', 'category': 'SP500'},
-        {'name': 'Berkshire Hathaway Inc.', 'code': 'brk-b.us', 'category': 'SP500'},
-        {'name': 'Eli Lilly and Company', 'code': 'lly.us', 'category': 'SP500'},
-        {'name': 'JPMorgan Chase & Co.', 'code': 'jpm.us', 'category': 'SP500'},
-        {'name': 'Broadcom Inc.', 'code': 'avgo.us', 'category': 'SP500'}, # Also in NDX
-        {'name': 'UnitedHealth Group Inc.', 'code': 'unh.us', 'category': 'SP500'},
-        {'name': 'Visa Inc.', 'code': 'v.us', 'category': 'SP500'},
-        {'name': 'Exxon Mobil Corporation', 'code': 'xom.us', 'category': 'SP500'},
-        {'name': 'Mastercard Incorporated', 'code': 'ma.us', 'category': 'SP500'},
-        {'name': 'Johnson & Johnson', 'code': 'jnj.us', 'category': 'SP500'},
-        {'name': 'Procter & Gamble Co.', 'code': 'pg.us', 'category': 'SP500'},
-        {'name': 'Home Depot, Inc.', 'code': 'hd.us', 'category': 'SP500'},
-        {'name': 'AbbVie Inc.', 'code': 'abbv.us', 'category': 'SP500'},
-        {'name': 'Chevron Corporation', 'code': 'cvx.us', 'category': 'SP500'},
-        {'name': 'Merck & Co., Inc.', 'code': 'mrk.us', 'category': 'SP500'},
-        {'name': 'Bank of America Corp.', 'code': 'bac.us', 'category': 'SP500'},
-        {'name': 'Coca-Cola Co.', 'code': 'ko.us', 'category': 'SP500'},
-        {'name': 'Adobe Inc.', 'code': 'adbe.us', 'category': 'SP500'}, # Also in NDX
-        {'name': 'PepsiCo, Inc.', 'code': 'pep.us', 'category': 'SP500'}, # Also in NDX
-        {'name': 'Thermo Fisher Scientific Inc.', 'code': 'tmo.us', 'category': 'SP500'},
-        {'name': 'McDonald\'s Corporation', 'code': 'mcd.us', 'category': 'SP500'},
-        {'name': 'Accenture plc', 'code': 'acn.us', 'category': 'SP500'},
-        {'name': 'Abbott Laboratories', 'code': 'abt.us', 'category': 'SP500'},
-        {'name': 'Danaher Corporation', 'code': 'dhr.us', 'category': 'SP500'},
-        {'name': 'Walt Disney Co.', 'code': 'dis.us', 'category': 'SP500'},
-        {'name': 'Wells Fargo & Company', 'code': 'wfc.us', 'category': 'SP500'},
-        {'name': 'Intel Corporation', 'code': 'intc.us', 'category': 'SP500'}, # Also in NDX
-        {'name': 'Verizon Communications Inc.', 'code': 'vz.us', 'category': 'SP500'},
-        {'name': 'NextEra Energy, Inc.', 'code': 'nee.us', 'category': 'SP500'},
-        {'name': 'Pfizer Inc.', 'code': 'pfe.us', 'category': 'SP500'},
-        {'name': 'Morgan Stanley', 'code': 'ms.us', 'category': 'SP500'},
-        {'name': 'Nike, Inc.', 'code': 'nke.us', 'category': 'SP500'},
-        {'name': 'Philip Morris International Inc.', 'code': 'pm.us', 'category': 'SP500'},
-        {'name': 'Honeywell International Inc.', 'code': 'hon.us', 'category': 'SP500'}, # Also in NDX
-        {'name': 'Intuit Inc.', 'code': 'intu.us', 'category': 'SP500'}, # Also in NDX
-        {'name': 'Union Pacific Corporation', 'code': 'unp.us', 'category': 'SP500'},
-        {'name': 'International Business Machines Corp.', 'code': 'ibm.us', 'category': 'SP500'},
-        {'name': 'Amgen Inc.', 'code': 'amgn.us', 'category': 'SP500'}, # Also in NDX
-        {'name': 'Goldman Sachs Group, Inc.', 'code': 'gs.us', 'category': 'SP500'},
-        {'name': 'General Electric Company', 'code': 'ge.us', 'category': 'SP500'},
-        {'name': 'Caterpillar Inc.', 'code': 'cat.us', 'category': 'SP500'},
-        {'name': 'United Parcel Service, Inc.', 'code': 'ups.us', 'category': 'SP500'},
-        {'name': 'Boeing Company', 'code': 'ba.us', 'category': 'SP500'},
-        {'name': 'BlackRock, Inc.', 'code': 'blk.us', 'category': 'SP500'},
-        {'name': 'Applied Materials, Inc.', 'code': 'amat.us', 'category': 'SP500'}, # Also in NDX
-        {'name': 'Qualcomm Inc.', 'code': 'qcom.us', 'category': 'SP500'}, # Also in NDX
-        {'name': 'Raytheon Technologies Corporation', 'code': 'rtx.us', 'category': 'SP500'},
-        {'name': 'American Express Company', 'code': 'axp.us', 'category': 'SP500'},
-        {'name': 'Lowes Companies, Inc.', 'code': 'low.us', 'category': 'SP500'},
-        {'name': 'ServiceNow, Inc.', 'code': 'now.us', 'category': 'SP500'},
     ]
+
+    print("Fetching S&P 500 ticker list...")
+    sp500_configs = get_sp500_tickers()
+    sp500_index = [{'name': 'S&P 500 지수 (S&P 500 Index)', 'code': '^spx', 'category': 'SP500'}]
+    
+    all_configs = nasdaq100_configs + sp500_index + sp500_configs
 
     all_stock_data = []
     today = datetime.date.today()
     three_years_ago = today - datetime.timedelta(days=3*365)
 
-    # Use a set to avoid duplicate fetching but keep track of categories
+    # Use unique codes to avoid double fetching
     unique_codes = {}
-    for config in stock_configs:
+    for config in all_configs:
         code = config['code']
         if code not in unique_codes:
             unique_codes[code] = config
         else:
-            # If already exists, maybe append category if we wanted multi-category, 
-            # but for now just one is fine.
-            pass
+            # If a stock is in both, mark it as both or just keep first
+            if unique_codes[code]['category'] != config['category']:
+                unique_codes[code]['category'] = 'BOTH'
+
+    print(f"Total unique stocks to fetch: {len(unique_codes)}")
 
     for code, config in unique_codes.items():
         name = config['name']
@@ -180,6 +152,10 @@ def generate_stock_data():
             url = f"https://stooq.com/q/d/l/?s={code}&i=d"
             response = requests.get(url)
             response.raise_for_status()
+
+            if "Date,Open,High,Low,Close,Volume" not in response.text:
+                 print(f"Invalid data format for {name} ({code})")
+                 continue
 
             csv_file = StringIO(response.text)
             reader = csv.DictReader(csv_file)
@@ -216,7 +192,8 @@ def generate_stock_data():
                 'category': category,
                 'historicalData': stock_data
             })
-            time.sleep(0.5)
+            # Respect rate limits - 500+ requests need careful pacing
+            time.sleep(0.2) 
         except Exception as e:
             print(f"Error fetching data for {name} ({code}): {e}")
 
