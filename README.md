@@ -20,7 +20,7 @@ An interactive, high-performance web dashboard for visualizing and analyzing NAS
 ## 📸 Screenshots
 
 ### 📊 Stock Analysis View
-![Stock Analysis View](https://raw.githubusercontent.com/AngelloMo/myStock/main/docs/screenshots/dashboard.png)
+![Stock Analysis View](https://raw.githubusercontent.com/AngelloMo/myStock/main/docs/screenshots/nasdaq-60days.png)
 *(Note: Replace this with your actual bubble chart or dashboard screenshot)*
 
 ---
