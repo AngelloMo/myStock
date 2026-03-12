@@ -1,5 +1,5 @@
 // Counter API logic for visitor tracking
-const NAMESPACE = 'mystock-final-v7';
+const NAMESPACE = 'mystock-2026-final-v8';
 
 function getLocalDateString() {
     const d = new Date();
@@ -12,15 +12,19 @@ function getLocalDateString() {
 async function incrementVisit() {
     const todayStr = getLocalDateString();
     try {
+        // 끝 슬래시(/)를 명시하여 301 리다이렉트를 방지 (CORS 에러 해결의 핵심)
+        const totalUrl = `https://api.counterapi.dev/v1/${NAMESPACE}/total/up/`;
+        const dailyUrl = `https://api.counterapi.dev/v1/${NAMESPACE}/daily_${todayStr}/up/`;
+
         const options = { 
             method: 'GET',
             mode: 'cors',
-            cache: 'no-cache'
+            cache: 'no-store' // 쿼리 스트링 대신 표준 캐시 제어 사용
         };
 
         const [tRes, dRes] = await Promise.all([
-            fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/total/up`, options),
-            fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily_${todayStr}/up`, options)
+            fetch(totalUrl, options),
+            fetch(dailyUrl, options)
         ]);
         
         if (tRes.ok && dRes.ok) {
@@ -36,16 +40,17 @@ async function incrementVisit() {
 async function getVisitStats() {
     const todayStr = getLocalDateString();
     try {
-        const options = { method: 'GET', mode: 'cors', cache: 'no-cache' };
+        const options = { method: 'GET', mode: 'cors', cache: 'no-store' };
         const [tRes, dRes] = await Promise.all([
-            fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/total`, options),
-            fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily_${todayStr}`, options)
+            fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/total/`, options),
+            fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily_${todayStr}/`, options)
         ]);
 
         let total = 0, daily = 0;
         if (tRes.ok) total = (await tRes.json()).count || 0;
         if (dRes.ok) daily = (await dRes.json()).count || 0;
 
+        console.log('[CounterAPI] Stats fetched:', { total, daily });
         return { total: Number(total), daily: Number(daily) };
     } catch (e) {
         console.error('[CounterAPI] Fetch error:', e);
@@ -68,7 +73,7 @@ async function getVisitTrend() {
         
         if (i === 0) {
             try {
-                const res = await fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily_${dateStr}`, { cache: 'no-cache' });
+                const res = await fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily_${dateStr}/`, { cache: 'no-store' });
                 const count = res.ok ? (await res.json()).count : 0;
                 trend.push({ date: dateStr, count: Number(count || 0) });
             } catch (e) {
@@ -85,7 +90,7 @@ async function getVisitTrend() {
     if (window.location.href.includes('admin.html')) return;
 
     const todayStr = getLocalDateString();
-    const sessionKey = `v7_visited_${todayStr}`;
+    const sessionKey = `v8_visited_${todayStr}`;
     
     if (!sessionStorage.getItem(sessionKey)) {
         incrementVisit().then(success => {
