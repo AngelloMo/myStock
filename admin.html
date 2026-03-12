@@ -57,13 +57,14 @@
             </div>
         </div>
         <div style="margin-top: 30px;">
-            <p style="font-size: 0.9em; color: #666;">* 본 데이터는 서버가 없는 정적 페이지 특성상 시뮬레이션된 데이터입니다.<br>정확한 통계는 Google Analytics 등을 연동해야 합니다.</p>
+            <p style="font-size: 0.9em; color: #666;">* 본 데이터는 Counter API를 통해 실시간으로 집계되는 실제 방문자 수입니다.</p>
             <button class="login-btn" style="background: #666; margin-top: 10px;" onclick="location.href='index.html'">메인으로 돌아가기</button>
         </div>
     </div>
 
+    <script src="counter.js"></script>
     <script>
-        function checkLogin() {
+        async function checkLogin() {
             const id = document.getElementById('admin-id').value;
             const pw = document.getElementById('admin-pw').value;
             
@@ -72,9 +73,10 @@
                 document.getElementById('login-section').style.display = 'none';
                 document.getElementById('stats-section').style.display = 'block';
                 
-                // 가상의 데이터 생성 (실제 데이터는 DB 연동 필요)
-                document.getElementById('daily-views').textContent = Math.floor(Math.random() * 500) + 800;
-                document.getElementById('total-views').textContent = "52,341";
+                // Real data from Counter API
+                const stats = await getVisitStats();
+                document.getElementById('daily-views').textContent = stats.daily.toLocaleString();
+                document.getElementById('total-views').textContent = stats.total.toLocaleString();
             } else {
                 document.getElementById('login-error').style.display = 'block';
             }
