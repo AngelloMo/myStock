@@ -12,8 +12,8 @@ async function incrementVisit() {
     const todayStr = getLocalDateString();
     const ts = Date.now();
     try {
-        const tRes = await fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/total/up?t=${ts}`);
-        const dRes = await fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily_${todayStr}/up?t=${ts}`);
+        const tRes = await fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/total/up/?t=${ts}`);
+        const dRes = await fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily_${todayStr}/up/?t=${ts}`);
         
         if (tRes.ok) console.log('[CounterAPI] Total increment success');
         if (dRes.ok) console.log('[CounterAPI] Daily increment success');
@@ -29,8 +29,8 @@ async function getVisitStats() {
     const ts = Date.now();
     try {
         const [tRes, dRes] = await Promise.all([
-            fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/total?t=${ts}`),
-            fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily_${todayStr}?t=${ts}`)
+            fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/total/?t=${ts}`),
+            fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily_${todayStr}/?t=${ts}`)
         ]);
 
         let total = 0;
@@ -66,7 +66,7 @@ async function getVisitTrend() {
         
         if (i === 0) {
             try {
-                const res = await fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily_${dateStr}?t=${ts}`);
+                const res = await fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily_${dateStr}/?t=${ts}`);
                 const data = res.ok ? await res.json() : { count: 0 };
                 trend.push({ date: dateStr, count: Number(data.count || 0) });
             } catch (e) {
@@ -84,7 +84,7 @@ async function getVisitTrend() {
     if (window.location.href.includes('admin.html')) return;
 
     const todayStr = getLocalDateString();
-    const sessionKey = `visited_v4_${NAMESPACE}_${todayStr}`;
+    const sessionKey = `visited_v5_${NAMESPACE}_${todayStr}`;
     
     if (!sessionStorage.getItem(sessionKey)) {
         incrementVisit().then(success => {
