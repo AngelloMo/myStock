@@ -1,105 +1,95 @@
-// Counter API logic - Ultra Stable Version
-const NAMESPACE = 'mystock2026'; // Pure alphanumeric
+// New Counter Logic using CountAPI.xyz
+// Documentation: https://countapi.xyz/
 
-function getLocalDateString() {
+const NAMESPACE = 'mystock-2026.pages.dev'; // Domain as namespace
+const KEY_TOTAL = 'visits_total';
+const KEY_DAILY_PREFIX = 'visits_daily_';
+
+function getTodayKey() {
     const d = new Date();
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
-    return `${y}${m}${day}`; // Format YYYYMMDD (no separators)
+    return `${KEY_DAILY_PREFIX}${y}${m}${day}`;
 }
 
-async function incrementVisit() {
-    const todayStr = getLocalDateString();
-    const ts = Date.now();
+async function hit(key) {
     try {
-        console.log('[CounterAPI] Incrementing...');
-        
-        // Use standard URLs WITHOUT trailing slashes
-        // Adding a timestamp as a query param to bypass cache WITHOUT triggering 400
-        const totalRes = await fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/total/up?t=${ts}`);
-        const dailyRes = await fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily${todayStr}/up?t=${ts}`);
-        
-        if (totalRes.ok) console.log('[CounterAPI] Total OK');
-        if (dailyRes.ok) console.log('[CounterAPI] Daily OK');
-        
-        return true;
+        const res = await fetch(`https://api.countapi.xyz/hit/${NAMESPACE}/${key}`);
+        if (res.ok) {
+            const data = await res.json();
+            return data.value;
+        }
     } catch (e) {
-        console.warn('[CounterAPI] Increment failed:', e);
-        return false;
+        console.error('CountAPI Hit Error:', e);
+    }
+    return 0;
+}
+
+async function get(key) {
+    try {
+        const res = await fetch(`https://api.countapi.xyz/get/${NAMESPACE}/${key}`);
+        if (res.ok) {
+            const data = await res.json();
+            return data.value;
+        }
+    } catch (e) {
+        // Key might not exist yet
+        return 0;
     }
 }
 
-async function getVisitStats() {
-    const todayStr = getLocalDateString();
-    const ts = Date.now();
-    try {
-        const [tRes, dRes] = await Promise.all([
-            fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/total?t=${ts}`),
-            fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily${todayStr}?t=${ts}`)
-        ]);
+// Exposed functions for Admin Page
+window.getVisitStats = async function() {
+    const todayKey = getTodayKey();
+    const [total, daily] = await Promise.all([
+        get(KEY_TOTAL),
+        get(todayKey)
+    ]);
+    return { total, daily };
+};
 
-        let total = 0;
-        if (tRes.ok) {
-            const data = await tRes.json();
-            total = data.count || 0;
-        }
-
-        let daily = 0;
-        if (dRes.ok) {
-            const data = await dRes.json();
-            daily = data.count || 0;
-        }
-
-        console.log('[CounterAPI] Stats:', { total, daily });
-        return { total: Number(total), daily: Number(daily) };
-    } catch (e) {
-        console.error('[CounterAPI] Fetch error:', e);
-        return { total: 0, daily: 0 };
-    }
-}
-
-async function getVisitTrend() {
+window.getVisitTrend = async function() {
     const trend = [];
     const today = new Date();
-    const ts = Date.now();
-    const dummyCounts = [124, 156, 189]; 
     
     for (let i = 3; i >= 0; i--) {
-        const date = new Date(today);
-        date.setDate(today.getDate() - i);
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
         
-        const y = date.getFullYear();
-        const m = String(date.getMonth() + 1).padStart(2, '0');
-        const d = String(date.getDate()).padStart(2, '0');
-        const dateStr = `${y}-${m}-${d}`; // For display
-        const apiDateKey = `${y}${m}${d}`; // For API
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        
+        const dateStr = `${y}-${m}-${day}`;
+        const key = `${KEY_DAILY_PREFIX}${y}${m}${day}`;
         
         if (i === 0) {
-            try {
-                const res = await fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily${apiDateKey}?t=${ts}`);
-                const count = res.ok ? (await res.json()).count : 0;
-                trend.push({ date: dateStr, count: Number(count || 0) });
-            } catch (e) {
-                trend.push({ date: dateStr, count: 0 });
-            }
+            const count = await get(key);
+            trend.push({ date: dateStr, count });
         } else {
-            trend.push({ date: dateStr, count: dummyCounts[3-i] });
+            // Dummy data for past
+            trend.push({ date: dateStr, count: [124, 156, 189][3-i] });
         }
     }
     return trend;
-}
+};
 
-// Global Execution
+// Auto-increment on load
 (function() {
     if (window.location.href.includes('admin.html')) return;
 
-    const todayStr = getLocalDateString();
-    const sessionKey = `v10_visited_${NAMESPACE}_${todayStr}`;
+    const todayKey = getTodayKey();
+    const sessionKey = `counted_${todayKey}`;
     
     if (!sessionStorage.getItem(sessionKey)) {
-        incrementVisit().then(() => {
+        console.log('Incrementing visits...');
+        Promise.all([
+            hit(KEY_TOTAL),
+            hit(todayKey)
+        ]).then(() => {
             sessionStorage.setItem(sessionKey, 'true');
+            console.log('Visits incremented.');
         });
     }
 })();
