@@ -1,12 +1,13 @@
 // Counter API logic for visitor tracking
-const NAMESPACE = 'mystock-dashboard-2026';
+// 새로운 고유 네임스페이스로 초기화하여 이전 오류 데이터 배제
+const NAMESPACE = 'mystock_final_v3_2026'; 
 
-// Helper to get local date in YYYY-MM-DD format
-function getLocalDateString(date = new Date()) {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+function getLocalDateString() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const date = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${date}`;
 }
 
 async function incrementVisit() {
@@ -14,26 +15,23 @@ async function incrementVisit() {
     const ts = Date.now();
     
     try {
-        console.log('[CounterAPI] Attempting to increment visit for:', todayStr);
+        console.log('[CounterAPI] 방문 기록 시도 중...');
         
-        // Sequential increment for stability
-        // 1. Total Count
-        const tRes = await fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/total/up?t=${ts}`);
-        if (tRes.ok) {
-            const tData = await tRes.json();
-            console.log('[CounterAPI] Total incremented:', tData.count);
-        }
+        // 전체 방문수와 오늘 방문수를 각각 확실히 호출
+        const [tRes, dRes] = await Promise.all([
+            fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/total/up?t=${ts}`),
+            fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily_${todayStr}/up?t=${ts}`)
+        ]);
 
-        // 2. Daily Count
-        const dRes = await fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily_${todayStr}/up?t=${ts}`);
-        if (dRes.ok) {
-            const dData = await dRes.json();
-            console.log('[CounterAPI] Daily incremented:', dData.count);
+        if (tRes.ok && dRes.ok) {
+            console.log('[CounterAPI] 방문 카운팅 성공!');
             return true;
+        } else {
+            console.error('[CounterAPI] API 응답 오류:', tRes.status, dRes.status);
+            return false;
         }
-        return false;
-    } catch (error) {
-        console.error('[CounterAPI] Error incrementing visit:', error);
+    } catch (e) {
+        console.error('[CounterAPI] 네트워크 오류:', e);
         return false;
     }
 }
@@ -47,82 +45,68 @@ async function getVisitStats() {
             fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily_${todayStr}?t=${ts}`)
         ]);
 
-        let total = 0;
-        if (tRes.ok) {
-            const data = await tRes.json();
-            total = data.count || 0;
-        }
+        const totalData = tRes.ok ? await totalRes_json(tRes) : { count: 0 };
+        const dailyData = dRes.ok ? await dailyRes_json(dRes) : { count: 0 };
 
-        let daily = 0;
-        if (dRes.ok) {
-            const data = await dRes.json();
-            daily = data.count || 0;
-        }
-
-        console.log('[CounterAPI] Fetched stats:', { total, daily });
-        return { total, daily };
-    } catch (error) {
-        console.error('[CounterAPI] Error fetching stats:', error);
+        return { 
+            total: totalData.count || 0, 
+            daily: dailyData.count || 0 
+        };
+    } catch (e) {
+        console.error('[CounterAPI] 통계 조회 오류:', e);
         return { total: 0, daily: 0 };
     }
 }
+
+// Helper to avoid duplicate json() calls if needed
+async function totalRes_json(res) { return await res.json(); }
+async function dailyRes_json(res) { return await res.json(); }
 
 async function getVisitTrend() {
     const trend = [];
     const today = new Date();
     const ts = Date.now();
-    
-    // Restoration of dummy data for previous 3 days + today's real data
-    const dummyCounts = [124, 156, 189];
+    const dummyCounts = [124, 156, 189]; 
     
     for (let i = 3; i >= 0; i--) {
         const date = new Date(today);
         date.setDate(today.getDate() - i);
-        const dateStr = getLocalDateString(date);
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const d = String(date.getDate()).padStart(2, '0');
+        const dateStr = `${y}-${m}-${d}`;
         
         if (i === 0) {
-            // Real data for today
             try {
                 const res = await fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily_${dateStr}?t=${ts}`);
-                let count = 0;
-                if (res.ok) {
-                    const data = await res.json();
-                    count = data.count || 0;
-                }
-                trend.push({ date: dateStr, count: count });
+                const data = res.ok ? await res.json() : { count: 0 };
+                trend.push({ date: dateStr, count: data.count || 0 });
             } catch (e) {
                 trend.push({ date: dateStr, count: 0 });
             }
         } else {
-            // Restored dummy data
             trend.push({ date: dateStr, count: dummyCounts[3-i] });
         }
     }
     return trend;
 }
 
-// Global Execution Hook
+// 초기 실행 로직
 (function() {
-    const path = window.location.pathname.toLowerCase();
-    
-    // Do not count visits on the admin page
-    if (path.includes('admin.html')) {
-        console.log('[CounterAPI] Admin page detected. Skipping increment.');
-        return;
-    }
+    // 1. 관리자 페이지에서는 카운트를 올리지 않음
+    if (window.location.pathname.includes('admin.html')) return;
 
-    const todayStr = getLocalDateString();
-    // v3 key to ensure a fresh session check
-    const sessionKey = `v3_visited_${NAMESPACE}_${todayStr}`;
+    // 2. 메인 대시보드 요소가 있는지 확인하여 정확한 페이지 판정
+    const isMainPage = !!document.getElementById('dashboard-select');
     
-    if (!sessionStorage.getItem(sessionKey)) {
-        incrementVisit().then(success => {
-            if (success) {
-                sessionStorage.setItem(sessionKey, 'true');
-                console.log('[CounterAPI] New session recorded for today.');
-            }
-        });
-    } else {
-        console.log('[CounterAPI] Session already recorded for today.');
+    if (isMainPage) {
+        const todayStr = getLocalDateString();
+        const sessionKey = `visited_${NAMESPACE}_${todayStr}`;
+        
+        if (!sessionStorage.getItem(sessionKey)) {
+            incrementVisit().then(success => {
+                if (success) sessionStorage.setItem(sessionKey, 'true');
+            });
+        }
     }
 })();
