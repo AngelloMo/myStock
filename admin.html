@@ -7,24 +7,20 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://code.highcharts.com/highcharts.js"></script>
     <style>
-        .login-container, .stats-container {
-            max-width: 400px;
-            margin: 100px auto;
+        .stats-container {
+            max-width: 800px;
+            margin: 50px auto;
             padding: 30px;
             background: #fff;
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             text-align: center;
         }
-        .stats-container { display: none; max-width: 800px; }
-        .input-group { margin-bottom: 15px; text-align: left; }
-        .input-group label { display: block; margin-bottom: 5px; font-weight: bold; }
-        .input-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        .login-btn { width: 100%; padding: 12px; background: #1877f2; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
         .stat-card { padding: 20px; background: #f8f9fa; border-radius: 8px; border: 1px solid #eee; }
         .stat-value { font-size: 2em; font-weight: bold; color: #1877f2; margin-top: 10px; }
         #trend-chart-container { margin-top: 30px; height: 300px; }
+        .login-btn { padding: 12px 24px; background: #666; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -32,30 +28,16 @@
         <h1 onclick="location.href='index.html'" style="cursor:pointer">미국 증시 분석 대시보드</h1>
     </header>
 
-    <div id="login-section" class="login-container">
-        <h2>관리자 로그인</h2>
-        <div class="input-group">
-            <label>아이디</label>
-            <input type="text" id="admin-id" placeholder="ID">
-        </div>
-        <div class="input-group">
-            <label>비밀번호</label>
-            <input type="password" id="admin-pw" placeholder="Password">
-        </div>
-        <button class="login-btn" onclick="checkLogin()">로그인</button>
-        <p id="login-error" style="color: red; margin-top: 10px; display: none;">아이디 또는 비밀번호가 틀렸습니다.</p>
-    </div>
-
     <div id="stats-section" class="stats-container">
         <h2>방문자 통계</h2>
         <div class="stats-grid">
             <div class="stat-card">
                 <div>일간 조회수 (Daily Views)</div>
-                <div class="stat-value" id="daily-views">0</div>
+                <div class="stat-value" id="daily-views">불러오는 중...</div>
             </div>
             <div class="stat-card">
                 <div>전체 조회수 (Total Views)</div>
-                <div class="stat-value" id="total-views">0</div>
+                <div class="stat-value" id="total-views">불러오는 중...</div>
             </div>
         </div>
         
@@ -63,20 +45,18 @@
 
         <div style="margin-top: 30px;">
             <p style="font-size: 0.9em; color: #666;">* 본 데이터는 Counter API를 통해 실시간으로 집계되는 실제 방문자 수입니다.</p>
-            <button class="login-btn" style="background: #666; margin-top: 10px;" onclick="location.href='index.html'">메인으로 돌아가기</button>
+            <button class="login-btn" onclick="location.href='index.html'">메인으로 돌아가기</button>
         </div>
     </div>
 
     <script src="counter.js?v=20260312_final"></script>
     <script>
-        async function checkLogin() {
-            const id = document.getElementById('admin-id').value;
-            const pw = document.getElementById('admin-pw').value;
-            
-            if (id === 'admin' && pw === 'system04!!') {
-                document.getElementById('login-section').style.display = 'none';
-                document.getElementById('stats-section').style.display = 'block';
-                
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadStats();
+        });
+
+        async function loadStats() {
+            try {
                 // Real data from Counter API
                 const stats = await getVisitStats();
                 document.getElementById('daily-views').textContent = stats.daily.toLocaleString();
@@ -84,28 +64,34 @@
 
                 // Render Trend Chart
                 renderTrendChart();
-            } else {
-                document.getElementById('login-error').style.display = 'block';
+            } catch (e) {
+                console.error('Stats load failed:', e);
+                document.getElementById('daily-views').textContent = 'Error';
+                document.getElementById('total-views').textContent = 'Error';
             }
         }
 
         async function renderTrendChart() {
-            const trend = await getVisitTrend();
-            const categories = trend.map(t => t.date);
-            const data = trend.map(t => t.count);
+            try {
+                const trend = await getVisitTrend();
+                const categories = trend.map(t => t.date);
+                const data = trend.map(t => t.count);
 
-            Highcharts.chart('trend-chart-container', {
-                chart: { type: 'line' },
-                title: { text: '최근 방문자 트렌드' },
-                xAxis: { categories: categories },
-                yAxis: { title: { text: '방문수' } },
-                series: [{
-                    name: '일일 방문자',
-                    data: data,
-                    color: '#1877f2'
-                }],
-                credits: { enabled: false }
-            });
+                Highcharts.chart('trend-chart-container', {
+                    chart: { type: 'line' },
+                    title: { text: '최근 방문자 트렌드' },
+                    xAxis: { categories: categories },
+                    yAxis: { title: { text: '방문수' } },
+                    series: [{
+                        name: '일일 방문자',
+                        data: data,
+                        color: '#1877f2'
+                    }],
+                    credits: { enabled: false }
+                });
+            } catch (e) {
+                console.error('Trend chart render failed:', e);
+            }
         }
     </script>
 </body>
