@@ -1,54 +1,54 @@
 // Counter API logic for visitor tracking
-const NAMESPACE = 'mystock-prod-2026';
+const NAMESPACE = 'mystock-final-v7';
 
-function getLocalDateString(date = new Date()) {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+function getLocalDateString() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
 }
 
 async function incrementVisit() {
     const todayStr = getLocalDateString();
-    const ts = Date.now();
     try {
-        const tRes = await fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/total/up/?t=${ts}`);
-        const dRes = await fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily_${todayStr}/up/?t=${ts}`);
+        const options = { 
+            method: 'GET',
+            mode: 'cors',
+            cache: 'no-cache'
+        };
+
+        const [tRes, dRes] = await Promise.all([
+            fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/total/up`, options),
+            fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily_${todayStr}/up`, options)
+        ]);
         
-        if (tRes.ok) console.log('[CounterAPI] Total increment success');
-        if (dRes.ok) console.log('[CounterAPI] Daily increment success');
-        return true;
+        if (tRes.ok && dRes.ok) {
+            console.log('[CounterAPI] Increment Success');
+            return true;
+        }
     } catch (e) {
         console.error('[CounterAPI] Increment error:', e);
-        return false;
     }
+    return false;
 }
 
 async function getVisitStats() {
     const todayStr = getLocalDateString();
-    const ts = Date.now();
     try {
+        const options = { method: 'GET', mode: 'cors', cache: 'no-cache' };
         const [tRes, dRes] = await Promise.all([
-            fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/total/?t=${ts}`),
-            fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily_${todayStr}/?t=${ts}`)
+            fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/total`, options),
+            fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily_${todayStr}`, options)
         ]);
 
-        let total = 0;
-        if (tRes.ok) {
-            const data = await tRes.json();
-            total = data.count || 0;
-        }
+        let total = 0, daily = 0;
+        if (tRes.ok) total = (await tRes.json()).count || 0;
+        if (dRes.ok) daily = (await dRes.json()).count || 0;
 
-        let daily = 0;
-        if (dRes.ok) {
-            const data = await dRes.json();
-            daily = data.count || 0;
-        }
-
-        console.log('[CounterAPI] Stats Fetched:', { total, daily });
         return { total: Number(total), daily: Number(daily) };
     } catch (e) {
-        console.error('[CounterAPI] Stats fetch error:', e);
+        console.error('[CounterAPI] Fetch error:', e);
         return { total: 0, daily: 0 };
     }
 }
@@ -56,19 +56,21 @@ async function getVisitStats() {
 async function getVisitTrend() {
     const trend = [];
     const today = new Date();
-    const ts = Date.now();
     const dummyCounts = [124, 156, 189]; 
     
     for (let i = 3; i >= 0; i--) {
         const date = new Date(today);
         date.setDate(today.getDate() - i);
-        const dateStr = getLocalDateString(date);
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const dateStr = `${y}-${m}-${day}`;
         
         if (i === 0) {
             try {
-                const res = await fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily_${dateStr}/?t=${ts}`);
-                const data = res.ok ? await res.json() : { count: 0 };
-                trend.push({ date: dateStr, count: Number(data.count || 0) });
+                const res = await fetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily_${dateStr}`, { cache: 'no-cache' });
+                const count = res.ok ? (await res.json()).count : 0;
+                trend.push({ date: dateStr, count: Number(count || 0) });
             } catch (e) {
                 trend.push({ date: dateStr, count: 0 });
             }
@@ -79,12 +81,11 @@ async function getVisitTrend() {
     return trend;
 }
 
-// Global Execution
 (function() {
     if (window.location.href.includes('admin.html')) return;
 
     const todayStr = getLocalDateString();
-    const sessionKey = `visited_v5_${NAMESPACE}_${todayStr}`;
+    const sessionKey = `v7_visited_${todayStr}`;
     
     if (!sessionStorage.getItem(sessionKey)) {
         incrementVisit().then(success => {
