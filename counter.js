@@ -19,7 +19,7 @@ function getKSTDateString(offset = 0) {
     return `${y}${m}${day}`;
 }
 
-// 1. 카운트 증가 로직 (안정성을 위해 여러 방식 병렬 실행)
+// 1. 카운트 증가 로직 (중복 카운팅 방지를 위해 단일 방식 사용)
 async function incrementVisit() {
     const todayStr = getKSTDateString(0);
     const ts = Date.now();
@@ -30,9 +30,8 @@ async function incrementVisit() {
     ];
 
     urls.forEach(url => {
-        // A. Fetch (no-cors)
-        fetch(url, { mode: 'no-cors', cache: 'no-store' }).catch(() => {});
-        // B. Image pixel (Fallback)
+        // 비동기 실행 (Fire-and-forget)
+        // fetch와 Image를 동시에 사용하면 중복 카운팅되므로, 가장 안정적인 Image 방식만 사용합니다.
         const img = new Image();
         img.src = url;
     });
