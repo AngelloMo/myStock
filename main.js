@@ -121,8 +121,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('play-bubble').addEventListener('click', toggleBubbleAnimation);
-    document.getElementById('speed-control').addEventListener('input', e => {
-        animationSpeed = parseInt(e.target.value);
+    
+    const BASE_SPEED = 300; 
+    document.getElementById('speed-control').addEventListener('change', e => {
+        const multiplier = parseFloat(e.target.value);
+        animationSpeed = Math.round(BASE_SPEED / multiplier);
+
+        // 실시간으로 애니메이션 속도를 변경하기 위해, 재생 중이라면 간격 재설정
+        if (bubbleAnimationInterval) {
+            clearInterval(bubbleAnimationInterval);
+            startAnimationLoop();
+        }
     });
 
     document.getElementById('date-slider').addEventListener('input', e => {
