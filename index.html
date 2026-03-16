@@ -66,8 +66,22 @@
                         <label>필터:</label>
                         <select id="bubble-filter">
                             <option value="all">전체 종목</option>
-                            <option value="vol-1w">거래량 급증 Top 10 (1주)</option>
-                            <option value="mcap-1m">시총 변동 Top 10 (1달)</option>
+                            <optgroup label="시총 변동 (상승 Top 10)">
+                                <option value="mcap-up-1m">최근 1달 상승</option>
+                                <option value="mcap-up-3m">최근 3달 상승</option>
+                                <option value="mcap-up-1y">최근 1년 상승</option>
+                            </optgroup>
+                            <optgroup label="시총 변동 (하락 Top 10)">
+                                <option value="mcap-down-1m">최근 1달 하락</option>
+                                <option value="mcap-down-3m">최근 3달 하락</option>
+                                <option value="mcap-down-1y">최근 1년 하락</option>
+                            </optgroup>
+                            <optgroup label="거래량 변동 (Top 10)">
+                                <option value="vol-up-1w">최근 1주 급증</option>
+                                <option value="vol-up-1m">최근 1달 급증</option>
+                                <option value="vol-down-1w">최근 1주 급감</option>
+                                <option value="vol-down-1m">최근 1달 급감</option>
+                            </optgroup>
                         </select>
                     </div>
                 </div>

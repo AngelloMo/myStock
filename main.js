@@ -164,31 +164,70 @@ function getFilteredStocks() {
 
     if (filterType === 'all') return stocks;
 
-    if (filterType === 'vol-1w') {
-        // 전주 대비 최근 1주일 거래량 증가율
-        const scored = stocks.map(s => {
-            const h = s.h || [];
-            if (h.length < 14) return { s, score: -1 };
-            const last7 = h.slice(-7).reduce((acc, curr) => acc + curr.v, 0);
-            const prev7 = h.slice(-14, -7).reduce((acc, curr) => acc + curr.v, 0);
-            return { s, score: prev7 > 0 ? (last7 / prev7) : 0 };
-        }).sort((a, b) => b.score - a.score);
-        return scored.slice(0, 10).map(item => item.s);
+    // Helper to calculate score based on timeframe
+    const getMcapScore = (s, days, isAsc = false) => {
+        const h = s.h || [];
+        if (h.length < days) return isAsc ? 999999 : -999999;
+        const now = h[h.length - 1].c;
+        const prev = h[h.length - days] ? h[h.length - days].c : h[0].c;
+        return (now - prev) / prev;
+    };
+
+    const getVolScore = (s, days, isAsc = false) => {
+        const h = s.h || [];
+        if (h.length < days * 2) return isAsc ? 999999 : -999999;
+        const recent = h.slice(-days).reduce((acc, curr) => acc + curr.v, 0);
+        const prev = h.slice(-(days * 2), -days).reduce((acc, curr) => acc + curr.v, 0);
+        return prev > 0 ? (recent / prev) : 0;
+    };
+
+    let scored = [];
+    switch (filterType) {
+        case 'mcap-up-1m':
+            scored = stocks.map(s => ({ s, score: getMcapScore(s, 21) }));
+            scored.sort((a, b) => b.score - a.score);
+            break;
+        case 'mcap-up-3m':
+            scored = stocks.map(s => ({ s, score: getMcapScore(s, 63) }));
+            scored.sort((a, b) => b.score - a.score);
+            break;
+        case 'mcap-up-1y':
+            scored = stocks.map(s => ({ s, score: getMcapScore(s, 252) }));
+            scored.sort((a, b) => b.score - a.score);
+            break;
+        case 'mcap-down-1m':
+            scored = stocks.map(s => ({ s, score: getMcapScore(s, 21) }));
+            scored.sort((a, b) => a.score - b.score);
+            break;
+        case 'mcap-down-3m':
+            scored = stocks.map(s => ({ s, score: getMcapScore(s, 63) }));
+            scored.sort((a, b) => a.score - b.score);
+            break;
+        case 'mcap-down-1y':
+            scored = stocks.map(s => ({ s, score: getMcapScore(s, 252) }));
+            scored.sort((a, b) => a.score - b.score);
+            break;
+        case 'vol-up-1w':
+            scored = stocks.map(s => ({ s, score: getVolScore(s, 5) }));
+            scored.sort((a, b) => b.score - a.score);
+            break;
+        case 'vol-up-1m':
+            scored = stocks.map(s => ({ s, score: getVolScore(s, 21) }));
+            scored.sort((a, b) => b.score - a.score);
+            break;
+        case 'vol-down-1w':
+            scored = stocks.map(s => ({ s, score: getVolScore(s, 5, true) }));
+            scored.sort((a, b) => a.score - b.score);
+            break;
+        case 'vol-down-1m':
+            scored = stocks.map(s => ({ s, score: getVolScore(s, 21, true) }));
+            scored.sort((a, b) => a.score - b.score);
+            break;
+        default:
+            return stocks;
     }
 
-    if (filterType === 'mcap-1m') {
-        // 최근 한 달 간 시가총액(주가) 변동률
-        const scored = stocks.map(s => {
-            const h = s.h || [];
-            if (h.length < 20) return { s, score: -100 };
-            const now = h[h.length - 1].c;
-            const prev = h[h.length - 21] ? h[h.length - 21].c : h[0].c;
-            return { s, score: (now - prev) / prev };
-        }).sort((a, b) => b.score - a.score);
-        return scored.slice(0, 10).map(item => item.s);
-    }
-
-    return stocks;
+    return scored.slice(0, 10).map(item => item.s);
 }
 
 function switchDashboard(category) {
