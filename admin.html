@@ -71,30 +71,30 @@
         }
 
         async function loadStats() {
+            const dailyEl = document.getElementById('daily-views');
+            const totalEl = document.getElementById('total-views');
+
             try {
-                // Real data from Counter API
-                const stats = await getVisitStats();
+                // 병렬로 통계와 트렌드 데이터를 불러옵니다.
+                const [stats, trend] = await Promise.all([
+                    getVisitStats(),
+                    getVisitTrend()
+                ]);
                 
-                const dailyEl = document.getElementById('daily-views');
-                const totalEl = document.getElementById('total-views');
+                if (dailyEl) dailyEl.textContent = stats.daily.toLocaleString();
+                if (totalEl) totalEl.textContent = stats.total.toLocaleString();
 
-                if (dailyEl) dailyEl.textContent = stats.daily !== null ? stats.daily.toLocaleString() : '데이터 없음';
-                if (totalEl) totalEl.textContent = stats.total !== null ? stats.total.toLocaleString() : '데이터 없음';
-
-                // Render Trend Chart
-                renderTrendChart();
+                // Render Trend Chart with fetched data
+                renderTrendChart(trend);
             } catch (e) {
                 console.error('Stats load failed:', e);
-                const dailyEl = document.getElementById('daily-views');
-                const totalEl = document.getElementById('total-views');
                 if (dailyEl) dailyEl.textContent = 'Error';
                 if (totalEl) totalEl.textContent = 'Error';
             }
         }
 
-        async function renderTrendChart() {
+        function renderTrendChart(trend) {
             try {
-                const trend = await getVisitTrend();
                 const categories = trend.map(t => t.date);
                 const data = trend.map(t => t.count);
 

@@ -1,4 +1,4 @@
-// Counter API logic - "The Bulletproof Version 2026.03.16"
+// Counter API logic - "High Performance Version 2026.03.16"
 const NAMESPACE = 'mystock_real_2026_final_v2'; 
 
 // KST (UTC+9) 기준 날짜 문자열 생성
@@ -17,7 +17,7 @@ function getKSTDateString(offset = 0) {
     return `${y}${m}${day}`;
 }
 
-// 1. 카운트 증가 로직
+// 1. 카운트 증가 로직 (빠른 응답을 위해 픽셀 방식 사용)
 async function incrementVisit() {
     const todayStr = getKSTDateString(0);
     const ts = Date.now();
@@ -28,92 +28,78 @@ async function incrementVisit() {
     ];
 
     urls.forEach(url => {
-        fetch(url, { mode: 'no-cors', cache: 'no-store' }).catch(() => {
-            const img = new Image();
-            img.src = url;
-        });
+        // 비동기 실행, 결과 대기하지 않음
+        const img = new Image();
+        img.src = url;
     });
-
-    console.log('[CounterAPI] Visit increment requested (KST):', todayStr);
 }
 
-// 2. 캐시 방지 및 프록시를 사용하여 데이터 읽기
-async function proxyFetch(url) {
+// 2. 최적화된 데이터 패치 (Direct fetch 우선, 실패시 Proxy)
+async function fastFetch(url) {
     const ts = Date.now();
-    const proxies = [
-        `https://api.allorigins.win/get?url=${encodeURIComponent(url)}&_=${ts}`,
-        `https://corsproxy.io/?${encodeURIComponent(url)}`
-    ];
-
-    for (const pUrl of proxies) {
-        try {
-            const res = await fetch(pUrl, { cache: 'no-store' });
-            if (res.ok) {
-                const data = await res.json();
-                let result = null;
-
-                if (pUrl.includes('allorigins')) {
-                    result = typeof data.contents === 'string' ? JSON.parse(data.contents) : data.contents;
-                } else {
-                    result = data;
-                }
-
-                // API returns { count: value } on success
-                if (result && typeof result.count !== 'undefined') {
-                    return result;
-                }
-
-                // API might return error message if key doesn't exist
-                if (result && result.message && result.message.includes('not found')) {
-                    return { count: 0 };
-                }
-            }
-        } catch (e) {
-            console.warn(`Proxy ${pUrl} failed or returned invalid data:`, e);
+    const directUrl = `${url}${url.includes('?') ? '&' : '?'}t=${ts}`;
+    
+    try {
+        // 1. Direct fetch 시도 (CORS 지원하는 경우 가장 빠름)
+        const response = await fetch(directUrl, { cache: 'no-store' });
+        if (response.ok) {
+            return await response.json();
         }
+    } catch (e) {
+        console.warn(`[CounterAPI] Direct fetch failed, trying proxy: ${url}`);
     }
-    return null; 
+
+    // 2. Proxy fallback (Direct fetch 실패 시에만 실행)
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(directUrl)}`;
+    try {
+        const res = await fetch(proxyUrl, { cache: 'no-store' });
+        if (res.ok) {
+            const data = await res.json();
+            return typeof data.contents === 'string' ? JSON.parse(data.contents) : data.contents;
+        }
+    } catch (e) {
+        console.error(`[CounterAPI] Proxy fetch failed:`, e);
+    }
+    
+    return { count: 0 }; // 기본값
 }
 
 window.getVisitStats = async function() {
     const todayStr = getKSTDateString(0);
-    const ts = Date.now();
-
+    
+    // 병렬 실행
     const [totalData, dailyData] = await Promise.all([
-        proxyFetch(`https://api.counterapi.dev/v1/${NAMESPACE}/overall_hits?t=${ts}`),
-        proxyFetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily_hits_${todayStr}?t=${ts}`)
+        fastFetch(`https://api.counterapi.dev/v1/${NAMESPACE}/overall_hits`),
+        fastFetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily_hits_${todayStr}`)
     ]);
 
     return { 
-        total: totalData !== null ? Number(totalData.count) : null, 
-        daily: dailyData !== null ? Number(dailyData.count) : null 
+        total: totalData ? Number(totalData.count || 0) : 0, 
+        daily: dailyData ? Number(dailyData.count || 0) : 0 
     };
 };
 
 window.getVisitTrend = async function() {
-    const ts = Date.now();
     const days = 7;
     const fetchPromises = [];
 
     for (let i = days - 1; i >= 0; i--) {
         const dStr = getKSTDateString(i);
-        // MM-DD format for cleaner chart
         const dateDisplay = `${dStr.substring(4,6)}-${dStr.substring(6,8)}`;
-        const key = `daily_hits_${dStr}`;
+        const url = `https://api.counterapi.dev/v1/${NAMESPACE}/daily_hits_${dStr}`;
 
         fetchPromises.push(
-            proxyFetch(`https://api.counterapi.dev/v1/${NAMESPACE}/${key}?t=${ts}`)
-                .then(data => ({ 
-                    date: dateDisplay, 
-                    count: data !== null ? Number(data.count) : 0 
-                }))
+            fastFetch(url).then(data => ({ 
+                date: dateDisplay, 
+                count: data ? Number(data.count || 0) : 0 
+            }))
         );
     }
 
     return await Promise.all(fetchPromises);
 };
 
-// Auto-run (Avoid admin page)
+// 자동 실행 (방문수 증가)
 (function() {
     if (window.location.pathname.includes('admin.html')) return;
 
