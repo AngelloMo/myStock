@@ -1,10 +1,12 @@
-// Counter API logic - "High Performance Version 2026.03.16"
+// Counter API logic - "Ultra High Performance Version 2026.03.16"
 const NAMESPACE = 'mystock_real_2026_final_v2'; 
 
 // KST (UTC+9) 기준 날짜 문자열 생성
 function getKSTDateString(offset = 0) {
     const now = new Date();
+    // UTC 타임스탬프 계산
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+    // KST 타임스탬프 계산 (UTC+9)
     const kst = new Date(utc + (3600000 * 9));
 
     if (offset !== 0) {
@@ -17,7 +19,7 @@ function getKSTDateString(offset = 0) {
     return `${y}${m}${day}`;
 }
 
-// 1. 카운트 증가 로직 (빠른 응답을 위해 픽셀 방식 사용)
+// 1. 카운트 증가 로직 (안정성을 위해 여러 방식 병렬 실행)
 async function incrementVisit() {
     const todayStr = getKSTDateString(0);
     const ts = Date.now();
@@ -28,40 +30,61 @@ async function incrementVisit() {
     ];
 
     urls.forEach(url => {
-        // 비동기 실행, 결과 대기하지 않음
+        // A. Fetch (no-cors)
+        fetch(url, { mode: 'no-cors', cache: 'no-store' }).catch(() => {});
+        // B. Image pixel (Fallback)
         const img = new Image();
         img.src = url;
     });
 }
 
-// 2. 최적화된 데이터 패치 (Direct fetch 우선, 실패시 Proxy)
+// 2. 고속 데이터 패치 (병렬 프록시 전략)
 async function fastFetch(url) {
     const ts = Date.now();
     const directUrl = `${url}${url.includes('?') ? '&' : '?'}t=${ts}`;
     
+    // 1. Direct fetch 시도 (CORS 지원 여부 확인, 800ms 타임아웃)
     try {
-        // 1. Direct fetch 시도 (CORS 지원하는 경우 가장 빠름)
-        const response = await fetch(directUrl, { cache: 'no-store' });
-        if (response.ok) {
-            return await response.json();
-        }
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 800);
+        const response = await fetch(directUrl, { cache: 'no-store', signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (response.ok) return await response.json();
     } catch (e) {
-        console.warn(`[CounterAPI] Direct fetch failed, trying proxy: ${url}`);
+        // Direct fetch failed or timed out
     }
 
-    // 2. Proxy fallback (Direct fetch 실패 시에만 실행)
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(directUrl)}`;
-    try {
-        const res = await fetch(proxyUrl, { cache: 'no-store' });
-        if (res.ok) {
-            const data = await res.json();
-            return typeof data.contents === 'string' ? JSON.parse(data.contents) : data.contents;
+    // 2. 병렬 프록시 시도 (가장 빠른 응답을 사용)
+    const proxies = [
+        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(directUrl)}`,
+        `https://corsproxy.io/?${encodeURIComponent(directUrl)}`,
+        `https://api.allorigins.win/get?url=${encodeURIComponent(directUrl)}`
+    ];
+
+    const fetchFromProxy = async (pUrl) => {
+        const res = await fetch(pUrl, { cache: 'no-store' });
+        if (!res.ok) throw new Error('Proxy failed');
+        const data = await res.json();
+        
+        let result = data;
+        // allorigins는 응답이 { contents: "..." } 형태임
+        if (pUrl.includes('allorigins')) {
+            result = typeof data.contents === 'string' ? JSON.parse(data.contents) : data.contents;
         }
+        
+        if (result && (typeof result.count !== 'undefined' || result.message)) {
+            return result;
+        }
+        throw new Error('Invalid data');
+    };
+
+    try {
+        // Promise.any를 사용하여 가장 먼저 성공하는 프록시 결과 반환
+        return await Promise.any(proxies.map(fetchFromProxy));
     } catch (e) {
-        console.error(`[CounterAPI] Proxy fetch failed:`, e);
+        console.error('[CounterAPI] All fetch attempts failed:', e);
+        return null; // 완전히 실패한 경우 null 반환
     }
-    
-    return { count: 0 }; // 기본값
 }
 
 window.getVisitStats = async function() {
@@ -74,8 +97,8 @@ window.getVisitStats = async function() {
     ]);
 
     return { 
-        total: totalData ? Number(totalData.count || 0) : 0, 
-        daily: dailyData ? Number(dailyData.count || 0) : 0 
+        total: totalData !== null ? Number(totalData.count || 0) : null, 
+        daily: dailyData !== null ? Number(dailyData.count || 0) : null 
     };
 };
 
@@ -91,7 +114,7 @@ window.getVisitTrend = async function() {
         fetchPromises.push(
             fastFetch(url).then(data => ({ 
                 date: dateDisplay, 
-                count: data ? Number(data.count || 0) : 0 
+                count: data !== null ? Number(data.count || 0) : 0 
             }))
         );
     }
