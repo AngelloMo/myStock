@@ -148,47 +148,60 @@ def generate_stock_data():
         name = config['name']
         category = config['category']
         print(f"[{i+1}/{len(unique_codes)}] Fetching {name} ({code})...")
-        try:
-            url = f"https://stooq.com/q/d/l/?s={code}&i=d"
-            response = requests.get(url)
-            response.raise_for_status()
+        
+        success = False
+        for retry in range(3):
+            try:
+                url = f"https://stooq.com/q/d/l/?s={code}&i=d"
+                response = requests.get(url, timeout=15)
+                response.raise_for_status()
 
-            if "Date,Open,High,Low,Close,Volume" not in response.text:
-                 continue
+                if "Date,Open,High,Low,Close,Volume" not in response.text:
+                    if retry < 2: 
+                        time.sleep(2)
+                        continue
+                    break
 
-            csv_file = StringIO(response.text)
-            reader = csv.DictReader(csv_file)
+                csv_file = StringIO(response.text)
+                reader = csv.DictReader(csv_file)
 
-            stock_data = []
-            for row in reader:
-                try:
-                    row_date = datetime.datetime.strptime(row['Date'], '%Y-%m-%d').date()
-                    if row_date >= start_date_limit:
-                        stock_data.append({
-                            'd': row['Date'], # Short keys to save space
-                            'o': round(float(row['Open']), 2),
-                            'h': round(float(row['High']), 2),
-                            'l': round(float(row['Low']), 2),
-                            'c': round(float(row['Close']), 2),
-                            'v': int(float(row['Volume'])) if row['Volume'] else 0
-                        })
-                except:
-                    continue
+                stock_data = []
+                for row in reader:
+                    try:
+                        row_date = datetime.datetime.strptime(row['Date'], '%Y-%m-%d').date()
+                        if row_date >= start_date_limit:
+                            stock_data.append({
+                                'd': row['Date'], # Short keys to save space
+                                'o': round(float(row['Open']), 2),
+                                'h': round(float(row['High']), 2),
+                                'l': round(float(row['Low']), 2),
+                                'c': round(float(row['Close']), 2),
+                                'v': int(float(row['Volume'])) if row['Volume'] else 0
+                            })
+                    except:
+                        continue
 
-            if not stock_data:
-                continue
+                if not stock_data:
+                    break
 
-            stock_data.sort(key=lambda x: x['d'])
+                stock_data.sort(key=lambda x: x['d'])
 
-            all_stock_data.append({
-                'n': name,
-                's': code.upper().replace('.US', ''),
-                't': category,
-                'h': stock_data
-            })
-            time.sleep(0.05) 
-        except Exception as e:
-            print(f"   Error: {e}")
+                all_stock_data.append({
+                    'n': name,
+                    's': code.upper().replace('.US', ''),
+                    't': category,
+                    'h': stock_data
+                })
+                success = True
+                break
+            except Exception as e:
+                print(f"   Retry {retry+1} failed: {e}")
+                time.sleep(1)
+        
+        if not success:
+            print(f"   Final failure for {name} ({code})")
+        
+        time.sleep(0.05) 
 
     # Minify JSON output (no separators, no indent)
     with open('stock.json', 'w', encoding='utf-8') as f:
