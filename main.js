@@ -145,13 +145,51 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('bubble-start-date').addEventListener('change', () => {
         if (bubbleAnimationInterval) toggleBubbleAnimation();
-        renderBubbleChart(currentCategoryData);
+        renderBubbleChart();
+    });
+
+    document.getElementById('bubble-filter').addEventListener('change', () => {
+        renderBubbleChart();
     });
 
     document.getElementById('stock-select').addEventListener('change', e => {
         selectStockByCode(e.target.value);
     });
 });
+
+function getFilteredStocks() {
+    const filterType = document.getElementById('bubble-filter').value;
+    const indices = ['^NDX', '^SPX'];
+    let stocks = currentCategoryData.filter(s => !indices.includes(s.s));
+
+    if (filterType === 'all') return stocks;
+
+    if (filterType === 'vol-1w') {
+        // 전주 대비 최근 1주일 거래량 증가율
+        const scored = stocks.map(s => {
+            const h = s.h || [];
+            if (h.length < 14) return { s, score: -1 };
+            const last7 = h.slice(-7).reduce((acc, curr) => acc + curr.v, 0);
+            const prev7 = h.slice(-14, -7).reduce((acc, curr) => acc + curr.v, 0);
+            return { s, score: prev7 > 0 ? (last7 / prev7) : 0 };
+        }).sort((a, b) => b.score - a.score);
+        return scored.slice(0, 10).map(item => item.s);
+    }
+
+    if (filterType === 'mcap-1m') {
+        // 최근 한 달 간 시가총액(주가) 변동률
+        const scored = stocks.map(s => {
+            const h = s.h || [];
+            if (h.length < 20) return { s, score: -100 };
+            const now = h[h.length - 1].c;
+            const prev = h[h.length - 21] ? h[h.length - 21].c : h[0].c;
+            return { s, score: (now - prev) / prev };
+        }).sort((a, b) => b.score - a.score);
+        return scored.slice(0, 10).map(item => item.s);
+    }
+
+    return stocks;
+}
 
 function switchDashboard(category) {
     currentCategory = category;
@@ -223,7 +261,8 @@ function startAnimationLoop() {
 function updateBubbleChart(date, duration) {
     if (!bubbleChart) return;
     const startDate = document.getElementById('bubble-start-date').value;
-    const bubbleData = getBubbleDataForDateRange(currentCategoryData, startDate, date);
+    const stocks = getFilteredStocks();
+    const bubbleData = getBubbleDataForDateRange(stocks, startDate, date);
     
     Object.keys(sectorConfig).forEach((sectorId, i) => {
         const sectorData = bubbleData.filter(d => d.sectorId === sectorId);
@@ -236,8 +275,7 @@ function updateBubbleChart(date, duration) {
 }
 
 function getBubbleDataForDateRange(stocks, startDate, currentDate) {
-    const indices = ['^NDX', '^SPX'];
-    return stocks.filter(s => !indices.includes(s.s)).map(stock => {
+    return stocks.map(stock => {
         const history = stock.h;
         const currentIdx = history.findIndex(item => item.d === currentDate);
         const startIdx = history.findIndex(item => item.d >= startDate);
@@ -263,8 +301,9 @@ function selectStockByCode(code) {
     }
 }
 
-function renderBubbleChart(stocks) {
-    bubbleDates = [...new Set(stocks.flatMap(s => s.h ? s.h.map(item => item.d) : []))].sort();
+function renderBubbleChart() {
+    const stocks = getFilteredStocks();
+    bubbleDates = [...new Set(currentCategoryData.flatMap(s => s.h ? s.h.map(item => item.d) : []))].sort();
     if (bubbleDates.length === 0) return;
     const startDate = document.getElementById('bubble-start-date').value || bubbleDates[0];
     filteredBubbleDates = bubbleDates.filter(d => d >= startDate);
@@ -275,7 +314,8 @@ function renderBubbleChart(stocks) {
     }
 
     const indices = ['^NDX', '^SPX'];
-    const startMCs = stocks.filter(s => !indices.includes(s.s)).map(s => {
+    const allValidStocks = currentCategoryData.filter(s => !indices.includes(s.s));
+    const startMCs = allValidStocks.map(s => {
         const idx = s.h ? s.h.findIndex(item => item.d >= startDate) : -1;
         return idx === -1 ? 0 : getMarketCap(s.s, s.h[idx].c);
     }).filter(v => v > 0);
