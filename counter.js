@@ -1,39 +1,65 @@
-// Counter API logic - "The Bulletproof Version"
-const NAMESPACE = 'mystock_final_stable_2026'; 
+// Counter API logic - "The Bulletproof Version 2026"
+const NAMESPACE = 'mystock_real_2026_final_v2'; 
 
-function getLocalDateString() {
+function getLocalDateString(offset = 0) {
     const d = new Date();
+    d.setDate(d.getDate() - offset);
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${y}${m}${day}`;
 }
 
-// 1. 이미지 픽셀 방식을 사용하여 CORS 에러 없이 무조건 카운트 증가
+// 1. 카운트 증가 로직 (fetch no-cors + Image fallback)
 async function incrementVisit() {
-    const todayStr = getLocalDateString();
+    const todayStr = getLocalDateString(0);
     const ts = Date.now();
-    
-    // 이미지 객체를 생성하여 API 호출 (브라우저가 CORS 검사를 하지 않음)
-    const totalPixel = new Image();
-    totalPixel.src = `https://api.counterapi.dev/v1/${NAMESPACE}/total/up?t=${ts}`;
-    
-    const dailyPixel = new Image();
-    dailyPixel.src = `https://api.counterapi.dev/v1/${NAMESPACE}/daily${todayStr}/up?t=${ts}`;
-    
-    console.log('[CounterAPI] Pixel tracking sent.');
+
+    const urls = [
+        `https://api.counterapi.dev/v1/${NAMESPACE}/total/up?t=${ts}`,
+        `https://api.counterapi.dev/v1/${NAMESPACE}/daily${todayStr}/up?t=${ts}`
+    ];
+
+    urls.forEach(url => {
+        // Method 1: Fetch no-cors
+        fetch(url, { mode: 'no-cors' }).catch(() => {
+            // Method 2: Image Pixel Fallback
+            const img = new Image();
+            img.src = url;
+        });
+    });
+
+    console.log('[CounterAPI] Visit increment requested for:', todayStr);
 }
 
-// 2. CORS 프록시를 사용하여 보안 차단 없이 데이터 읽기
+// 2. CORS 프록시를 사용하여 데이터 읽기
 async function proxyFetch(url) {
-    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-    const res = await fetch(proxyUrl);
-    if (res.ok) return await res.json();
-    throw new Error('Proxy fetch failed');
+    // 여러 프록시를 시도할 수 있도록 구성
+    const proxies = [
+        `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+        `https://corsproxy.io/?${encodeURIComponent(url)}`
+    ];
+
+    for (const pUrl of proxies) {
+        try {
+            const res = await fetch(pUrl);
+            if (res.ok) {
+                const data = await res.json();
+                // allorigins returns { contents: "..." }
+                if (pUrl.includes('allorigins')) {
+                    return JSON.parse(data.contents);
+                }
+                return data;
+            }
+        } catch (e) {
+            console.warn(`Proxy ${pUrl} failed, trying next...`);
+        }
+    }
+    throw new Error('All proxies failed');
 }
 
 window.getVisitStats = async function() {
-    const todayStr = getLocalDateString();
+    const todayStr = getLocalDateString(0);
     const ts = Date.now();
     try {
         const totalData = await proxyFetch(`https://api.counterapi.dev/v1/${NAMESPACE}/total?t=${ts}`);
@@ -51,34 +77,38 @@ window.getVisitStats = async function() {
 
 window.getVisitTrend = async function() {
     const trend = [];
-    const today = new Date();
     const ts = Date.now();
-    const dummy = [124, 156, 189];
-    
-    for (let i = 3; i >= 0; i--) {
-        const d = new Date(today);
-        d.setDate(today.getDate() - i);
+
+    // 최근 7일간의 데이터를 순차적으로 호출 (실제 값)
+    const days = 7;
+    const fetchPromises = [];
+
+    for (let i = days - 1; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
         const y = d.getFullYear();
         const m = String(d.getMonth() + 1).padStart(2, '0');
         const day = String(d.getDate()).padStart(2, '0');
         const dateStr = `${y}-${m}-${day}`;
-        
-        if (i === 0) {
-            try {
-                const data = await proxyFetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily${y}${m}${day}?t=${ts}`);
-                trend.push({ date: dateStr, count: Number(data.count || 0) });
-            } catch (e) { trend.push({ date: dateStr, count: 0 }); }
-        } else {
-            trend.push({ date: dateStr, count: dummy[3-i] });
-        }
+        const key = `daily${y}${m}${day}`;
+
+        fetchPromises.push(
+            proxyFetch(`https://api.counterapi.dev/v1/${NAMESPACE}/${key}?t=${ts}`)
+                .then(data => ({ date: dateStr, count: Number(data.count || 0) }))
+                .catch(() => ({ date: dateStr, count: 0 }))
+        );
     }
-    return trend;
+
+    return await Promise.all(fetchPromises);
 };
 
-// Auto-run
+// Auto-run (Avoid admin page)
 (function() {
-    if (window.location.href.includes('admin.html')) return;
-    const sessionKey = `v_pixel_${getLocalDateString()}`;
+    if (window.location.pathname.includes('admin.html')) return;
+
+    const todayStr = getLocalDateString(0);
+    const sessionKey = `v_pixel_${todayStr}`;
+
     if (!sessionStorage.getItem(sessionKey)) {
         incrementVisit();
         sessionStorage.setItem(sessionKey, 'true');
