@@ -1,18 +1,16 @@
 // Counter API logic - "The Bulletproof Version 2026.03.16"
 const NAMESPACE = 'mystock_real_2026_final_v2'; 
 
-// KST (UTC+9) 기준 날짜 문자열 생성 (사용자 로컬 시간에 의존하지 않음)
+// KST (UTC+9) 기준 날짜 문자열 생성
 function getKSTDateString(offset = 0) {
     const now = new Date();
-    // UTC 시간 계산
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    // KST는 UTC+9
     const kst = new Date(utc + (3600000 * 9));
-    
+
     if (offset !== 0) {
         kst.setDate(kst.getDate() - offset);
     }
-    
+
     const y = kst.getFullYear();
     const m = String(kst.getMonth() + 1).padStart(2, '0');
     const day = String(kst.getDate()).padStart(2, '0');
@@ -30,7 +28,6 @@ async function incrementVisit() {
     ];
 
     urls.forEach(url => {
-        // Direct call (no-cors) is enough for incrementing
         fetch(url, { mode: 'no-cors', cache: 'no-store' }).catch(() => {
             const img = new Image();
             img.src = url;
@@ -43,7 +40,6 @@ async function incrementVisit() {
 // 2. 캐시 방지 및 프록시를 사용하여 데이터 읽기
 async function proxyFetch(url) {
     const ts = Date.now();
-    // 프록시 자체의 캐시도 방지하기 위해 프록시 URL에도 타임스탬프 추가
     const proxies = [
         `https://api.allorigins.win/get?url=${encodeURIComponent(url)}&_=${ts}`,
         `https://corsproxy.io/?${encodeURIComponent(url)}`
@@ -55,39 +51,43 @@ async function proxyFetch(url) {
             if (res.ok) {
                 const data = await res.json();
                 let result = null;
-                
+
                 if (pUrl.includes('allorigins')) {
-                    result = JSON.parse(data.contents);
+                    result = typeof data.contents === 'string' ? JSON.parse(data.contents) : data.contents;
                 } else {
                     result = data;
                 }
 
+                // API returns { count: value } on success
                 if (result && typeof result.count !== 'undefined') {
                     return result;
                 }
+
+                // API might return error message if key doesn't exist
+                if (result && result.message && result.message.includes('not found')) {
+                    return { count: 0 };
+                }
             }
         } catch (e) {
-            console.warn(`Proxy ${pUrl} failed or returned invalid data`);
+            console.warn(`Proxy ${pUrl} failed or returned invalid data:`, e);
         }
     }
-    return { count: 0 };
+    return null; 
 }
 
 window.getVisitStats = async function() {
     const todayStr = getKSTDateString(0);
     const ts = Date.now();
-    
-    // 캐시를 피하기 위해 API URL에 항상 고유한 timestamp 추가
+
     const [totalData, dailyData] = await Promise.all([
         proxyFetch(`https://api.counterapi.dev/v1/${NAMESPACE}/overall_hits?t=${ts}`),
         proxyFetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily_hits_${todayStr}?t=${ts}`)
     ]);
 
-    const total = Number(totalData.count || 0);
-    const daily = Number(dailyData.count || 0);
-
-    console.log('[CounterAPI] Stats (KST) - Total:', total, 'Daily:', daily);
-    return { total, daily };
+    return { 
+        total: totalData !== null ? Number(totalData.count) : null, 
+        daily: dailyData !== null ? Number(dailyData.count) : null 
+    };
 };
 
 window.getVisitTrend = async function() {
@@ -97,13 +97,16 @@ window.getVisitTrend = async function() {
 
     for (let i = days - 1; i >= 0; i--) {
         const dStr = getKSTDateString(i);
-        // 트렌드 차트 표시용 날짜 (YYYY-MM-DD)
-        const dateDisplay = `${dStr.substring(0,4)}-${dStr.substring(4,6)}-${dStr.substring(6,8)}`;
+        // MM-DD format for cleaner chart
+        const dateDisplay = `${dStr.substring(4,6)}-${dStr.substring(6,8)}`;
         const key = `daily_hits_${dStr}`;
 
         fetchPromises.push(
             proxyFetch(`https://api.counterapi.dev/v1/${NAMESPACE}/${key}?t=${ts}`)
-                .then(data => ({ date: dateDisplay, count: Number(data.count || 0) }))
+                .then(data => ({ 
+                    date: dateDisplay, 
+                    count: data !== null ? Number(data.count) : 0 
+                }))
         );
     }
 

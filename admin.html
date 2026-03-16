@@ -55,29 +55,17 @@
     <script src="counter.js?v=20260316_v2"></script>
     <script>
         (function() {
-            const loggedIn = sessionStorage.getItem('admin_auth');
-            if (loggedIn === 'true') {
-                document.getElementById('admin-content').style.display = 'block';
-                initStats();
-            } else {
-                const user = prompt('관리자 아이디:');
-                const pass = prompt('비밀번호:');
-                if (user === 'admin' && pass === 'system04!!') {
-                    sessionStorage.setItem('admin_auth', 'true');
-                    document.getElementById('admin-content').style.display = 'block';
-                    initStats();
-                } else {
-                    alert('인증에 실패했습니다.');
-                    location.href = 'index.html';
-                }
-            }
+            // Remove authentication check as requested
+            document.getElementById('admin-content').style.display = 'block';
+            initStats();
         })();
 
         async function initStats() {
             // Set current date on label
             const now = new Date();
             const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-            document.getElementById('daily-label').textContent = `일일 조회수 (${dateStr})`;
+            const labelEl = document.getElementById('daily-label');
+            if (labelEl) labelEl.textContent = `일일 조회수 (${dateStr})`;
 
             await loadStats();
         }
@@ -86,15 +74,21 @@
             try {
                 // Real data from Counter API
                 const stats = await getVisitStats();
-                document.getElementById('daily-views').textContent = stats.daily.toLocaleString();
-                document.getElementById('total-views').textContent = stats.total.toLocaleString();
+                
+                const dailyEl = document.getElementById('daily-views');
+                const totalEl = document.getElementById('total-views');
+
+                if (dailyEl) dailyEl.textContent = stats.daily !== null ? stats.daily.toLocaleString() : '데이터 없음';
+                if (totalEl) totalEl.textContent = stats.total !== null ? stats.total.toLocaleString() : '데이터 없음';
 
                 // Render Trend Chart
                 renderTrendChart();
             } catch (e) {
                 console.error('Stats load failed:', e);
-                document.getElementById('daily-views').textContent = 'Error';
-                document.getElementById('total-views').textContent = 'Error';
+                const dailyEl = document.getElementById('daily-views');
+                const totalEl = document.getElementById('total-views');
+                if (dailyEl) dailyEl.textContent = 'Error';
+                if (totalEl) totalEl.textContent = 'Error';
             }
         }
 
