@@ -34,11 +34,11 @@
             <h2>방문자 통계</h2>
             <div class="stats-grid">
                 <div class="stat-card">
-                    <div id="daily-label">일간 조회수 (Daily Views)</div>
+                    <div id="daily-label">일간 조회수</div>
                     <div class="stat-value" id="daily-views">불러오는 중...</div>
                 </div>
                 <div class="stat-card">
-                    <div>전체 조회수 (Total Views)</div>
+                    <div>누적 조회수</div>
                     <div class="stat-value" id="total-views">불러오는 중...</div>
                 </div>
             </div>
@@ -106,11 +106,11 @@
 
                 Highcharts.chart('trend-chart-container', {
                     chart: { type: 'line' },
-                    title: { text: '최근 방문자 트렌드' },
+                    title: { text: '조회수 트렌드' },
                     xAxis: { categories: categories },
-                    yAxis: { title: { text: '방문수' } },
+                    yAxis: { title: { text: '조회수' } },
                     series: [{
-                        name: '일일 방문자',
+                        name: '일간 조회수',
                         data: data,
                         color: '#1877f2'
                     }],
