@@ -15,9 +15,10 @@ async function incrementVisit() {
     const todayStr = getLocalDateString(0);
     const ts = Date.now();
 
+    // 'total'과 'daily'라는 일반적인 이름 대신 더 구체적인 키 사용
     const urls = [
-        `https://api.counterapi.dev/v1/${NAMESPACE}/total/up?t=${ts}`,
-        `https://api.counterapi.dev/v1/${NAMESPACE}/daily${todayStr}/up?t=${ts}`
+        `https://api.counterapi.dev/v1/${NAMESPACE}/overall_hits/up?t=${ts}`,
+        `https://api.counterapi.dev/v1/${NAMESPACE}/daily_hits_${todayStr}/up?t=${ts}`
     ];
 
     urls.forEach(url => {
@@ -34,7 +35,6 @@ async function incrementVisit() {
 
 // 2. CORS 프록시를 사용하여 데이터 읽기
 async function proxyFetch(url) {
-    // 여러 프록시를 시도할 수 있도록 구성
     const proxies = [
         `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
         `https://corsproxy.io/?${encodeURIComponent(url)}`
@@ -45,49 +45,40 @@ async function proxyFetch(url) {
             const res = await fetch(pUrl);
             if (res.ok) {
                 const data = await res.json();
-                // allorigins returns { contents: "..." }
                 if (pUrl.includes('allorigins')) {
-                    return JSON.parse(data.contents);
+                    const parsed = JSON.parse(data.contents);
+                    if (parsed && typeof parsed.count !== 'undefined') return parsed;
+                } else {
+                    if (data && typeof data.count !== 'undefined') return data;
                 }
-                return data;
             }
         } catch (e) {
-            console.warn(`Proxy ${pUrl} failed, trying next...`);
+            console.warn(`Proxy ${pUrl} failed for ${url}`);
         }
     }
-    throw new Error('All proxies failed');
+    return { count: 0 }; // 모든 프록시 실패 시 0 반환
 }
 
 window.getVisitStats = async function() {
     const todayStr = getLocalDateString(0);
     const ts = Date.now();
-    let total = 0;
-    let daily = 0;
+    
+    // 두 요청을 병렬로 처리
+    const [totalData, dailyData] = await Promise.all([
+        proxyFetch(`https://api.counterapi.dev/v1/${NAMESPACE}/overall_hits?t=${ts}`),
+        proxyFetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily_hits_${todayStr}?t=${ts}`)
+    ]);
 
-    try {
-        const totalData = await proxyFetch(`https://api.counterapi.dev/v1/${NAMESPACE}/total?t=${ts}`);
-        total = Number(totalData.count || 0);
-        console.log('[CounterAPI] Total views fetched:', total);
-    } catch (e) {
-        console.error('[CounterAPI] Total stats error:', e);
-    }
+    const total = Number(totalData.count || 0);
+    const daily = Number(dailyData.count || 0);
 
-    try {
-        const dailyData = await proxyFetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily${todayStr}?t=${ts}`);
-        daily = Number(dailyData.count || 0);
-        console.log('[CounterAPI] Daily views fetched:', daily);
-    } catch (e) {
-        console.error('[CounterAPI] Daily stats error:', e);
-    }
-
+    console.log('[CounterAPI] Stats - Total:', total, 'Daily:', daily);
     return { total, daily };
 };
 
 window.getVisitTrend = async function() {
     const trend = [];
     const ts = Date.now();
-
-    // 최근 7일간의 데이터를 순차적으로 호출 (실제 값)
     const days = 7;
     const fetchPromises = [];
 
@@ -98,12 +89,11 @@ window.getVisitTrend = async function() {
         const m = String(d.getMonth() + 1).padStart(2, '0');
         const day = String(d.getDate()).padStart(2, '0');
         const dateStr = `${y}-${m}-${day}`;
-        const key = `daily${y}${m}${day}`;
+        const key = `daily_hits_${y}${m}${day}`;
 
         fetchPromises.push(
             proxyFetch(`https://api.counterapi.dev/v1/${NAMESPACE}/${key}?t=${ts}`)
                 .then(data => ({ date: dateStr, count: Number(data.count || 0) }))
-                .catch(() => ({ date: dateStr, count: 0 }))
         );
     }
 
