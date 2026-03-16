@@ -61,18 +61,26 @@ async function proxyFetch(url) {
 window.getVisitStats = async function() {
     const todayStr = getLocalDateString(0);
     const ts = Date.now();
+    let total = 0;
+    let daily = 0;
+
     try {
         const totalData = await proxyFetch(`https://api.counterapi.dev/v1/${NAMESPACE}/total?t=${ts}`);
-        const dailyData = await proxyFetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily${todayStr}?t=${ts}`);
-
-        return { 
-            total: Number(totalData.count || 0), 
-            daily: Number(dailyData.count || 0) 
-        };
+        total = Number(totalData.count || 0);
+        console.log('[CounterAPI] Total views fetched:', total);
     } catch (e) {
-        console.error('[CounterAPI] Stats Error:', e);
-        return { total: 0, daily: 0 };
+        console.error('[CounterAPI] Total stats error:', e);
     }
+
+    try {
+        const dailyData = await proxyFetch(`https://api.counterapi.dev/v1/${NAMESPACE}/daily${todayStr}?t=${ts}`);
+        daily = Number(dailyData.count || 0);
+        console.log('[CounterAPI] Daily views fetched:', daily);
+    } catch (e) {
+        console.error('[CounterAPI] Daily stats error:', e);
+    }
+
+    return { total, daily };
 };
 
 window.getVisitTrend = async function() {
