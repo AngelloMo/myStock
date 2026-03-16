@@ -21,6 +21,7 @@
         .stat-value { font-size: 2em; font-weight: bold; color: #1877f2; margin-top: 10px; }
         #trend-chart-container { margin-top: 30px; height: 300px; }
         .login-btn { padding: 12px 24px; background: #666; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        #admin-content { display: none; }
     </style>
 </head>
 <body>
@@ -28,32 +29,58 @@
         <h1 onclick="location.href='index.html'" style="cursor:pointer">미국 증시 분석 대시보드</h1>
     </header>
 
-    <div id="stats-section" class="stats-container">
-        <h2>방문자 통계</h2>
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div>일간 조회수 (Daily Views)</div>
-                <div class="stat-value" id="daily-views">불러오는 중...</div>
+    <div id="admin-content">
+        <div id="stats-section" class="stats-container">
+            <h2>방문자 통계</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div id="daily-label">일간 조회수 (Daily Views)</div>
+                    <div class="stat-value" id="daily-views">불러오는 중...</div>
+                </div>
+                <div class="stat-card">
+                    <div>전체 조회수 (Total Views)</div>
+                    <div class="stat-value" id="total-views">불러오는 중...</div>
+                </div>
             </div>
-            <div class="stat-card">
-                <div>전체 조회수 (Total Views)</div>
-                <div class="stat-value" id="total-views">불러오는 중...</div>
-            </div>
-        </div>
-        
-        <div id="trend-chart-container"></div>
+            
+            <div id="trend-chart-container"></div>
 
-        <div style="margin-top: 30px;">
-            <p style="font-size: 0.9em; color: #666;">* 본 데이터는 Counter API를 통해 실시간으로 집계되는 실제 방문자 수입니다.</p>
-            <button class="login-btn" onclick="location.href='index.html'">메인으로 돌아가기</button>
+            <div style="margin-top: 30px;">
+                <p style="font-size: 0.9em; color: #666;">* 본 데이터는 Counter API를 통해 실시간으로 집계되는 실제 방문자 수입니다.</p>
+                <button class="login-btn" onclick="location.href='index.html'">메인으로 돌아가기</button>
+            </div>
         </div>
     </div>
 
     <script src="counter.js?v=20260316_v2"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', async () => {
+        (function() {
+            const loggedIn = sessionStorage.getItem('admin_auth');
+            if (loggedIn === 'true') {
+                document.getElementById('admin-content').style.display = 'block';
+                initStats();
+            } else {
+                const user = prompt('관리자 아이디:');
+                const pass = prompt('비밀번호:');
+                if (user === 'admin' && pass === 'system04!!') {
+                    sessionStorage.setItem('admin_auth', 'true');
+                    document.getElementById('admin-content').style.display = 'block';
+                    initStats();
+                } else {
+                    alert('인증에 실패했습니다.');
+                    location.href = 'index.html';
+                }
+            }
+        })();
+
+        async function initStats() {
+            // Set current date on label
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+            document.getElementById('daily-label').textContent = `일간 조회수 (${dateStr})`;
+
             await loadStats();
-        });
+        }
 
         async function loadStats() {
             try {
