@@ -11,7 +11,7 @@ This project is a single-page web application that allows users to view historic
 *   **Timeframe Selection:** Users can switch between Daily, Weekly, and Monthly views of the stock chart.
 *   **Data Aggregation:** The application aggregates daily data into weekly and monthly formats on the client-side to display charts for different timeframes.
 *   **Interactive Chart:** Displays an interactive historical candlestick chart using Highcharts Stock, including volume data.
-*   **Bubble Chart Animation:** Visualizes stock price changes over time with animated bubbles. Includes play/pause controls, a date slider for manual navigation, and configurable speed multipliers (0.25x to 4x).
+*   **Bubble Chart Animation & Filtering:** Visualizes stock price changes over time with animated bubbles. Includes play/pause controls, a date slider for manual navigation, and configurable speed multipliers (0.25x to 4x). **Stock filtering (e.g., Top Gainers) is dynamically calculated based on the selected reference date (기준일).**
 *   **Real-time Visitor Counter:** Tracks total and daily visitor counts using CounterAPI. Stats are viewable on the Admin page. Optimized for high performance (2026-03-16) by implementing direct API calls and parallel data fetching.
 
 ## Tech Stack

@@ -159,25 +159,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function getFilteredStocks() {
     const filterType = document.getElementById('bubble-filter').value;
+    const refDate = document.getElementById('bubble-start-date').value;
     const indices = ['^NDX', '^SPX'];
     let stocks = currentCategoryData.filter(s => !indices.includes(s.s));
 
     if (filterType === 'all') return stocks;
 
+    // Helper to find index for reference date
+    const getRefIdx = (h) => {
+        if (!refDate) return h.length - 1;
+        const idx = h.findIndex(item => item.d === refDate);
+        return idx !== -1 ? idx : h.length - 1;
+    };
+
     // Helper to calculate score based on timeframe
     const getMcapScore = (s, days, isAsc = false) => {
         const h = s.h || [];
-        if (h.length < days) return isAsc ? 999999 : -999999;
-        const now = h[h.length - 1].c;
-        const prev = h[h.length - days] ? h[h.length - days].c : h[0].c;
+        const refIdx = getRefIdx(h);
+        if (refIdx < days) return isAsc ? 999999 : -999999;
+        const now = h[refIdx].c;
+        const prev = h[refIdx - days] ? h[refIdx - days].c : h[0].c;
         return (now - prev) / prev;
     };
 
     const getVolScore = (s, days, isAsc = false) => {
         const h = s.h || [];
-        if (h.length < days * 2) return isAsc ? 999999 : -999999;
-        const recent = h.slice(-days).reduce((acc, curr) => acc + curr.v, 0);
-        const prev = h.slice(-(days * 2), -days).reduce((acc, curr) => acc + curr.v, 0);
+        const refIdx = getRefIdx(h);
+        if (refIdx < days * 2) return isAsc ? 999999 : -999999;
+        const recent = h.slice(refIdx - days + 1, refIdx + 1).reduce((acc, curr) => acc + curr.v, 0);
+        const prev = h.slice(refIdx - (days * 2) + 1, refIdx - days + 1).reduce((acc, curr) => acc + curr.v, 0);
         return prev > 0 ? (recent / prev) : 0;
     };
 
