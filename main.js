@@ -172,26 +172,23 @@ function getFilteredStocks() {
         return idx !== -1 ? idx : h.length - 1;
     };
 
-    // Helper to calculate score based on timeframe (looking FORWARD from reference date)
+    // Helper to calculate score based on timeframe (looking BACKWARD from reference date)
     const getMcapScore = (s, days, isAsc = false) => {
         const h = s.h || [];
         const refIdx = getRefIdx(h);
-        const targetIdx = Math.min(refIdx + days, h.length - 1);
-        if (targetIdx <= refIdx) return isAsc ? 999999 : -999999;
-        const startPrice = h[refIdx].c;
-        const endPrice = h[targetIdx].c;
-        return (endPrice - startPrice) / startPrice;
+        if (refIdx < days) return isAsc ? 999999 : -999999;
+        const now = h[refIdx].c;
+        const prev = h[refIdx - days] ? h[refIdx - days].c : h[0].c;
+        return (now - prev) / prev;
     };
 
     const getVolScore = (s, days, isAsc = false) => {
         const h = s.h || [];
         const refIdx = getRefIdx(h);
-        const targetIdx = Math.min(refIdx + days, h.length - 1);
-        if (targetIdx <= refIdx) return isAsc ? 999999 : -999999;
-        const recent = h.slice(refIdx + 1, targetIdx + 1).reduce((acc, curr) => acc + curr.v, 0);
-        // Compare with same duration BEFORE reference date
-        const prevIdx = Math.max(0, refIdx - days + 1);
-        const prev = h.slice(prevIdx, refIdx + 1).reduce((acc, curr) => acc + curr.v, 0);
+        if (refIdx < days * 2) return isAsc ? 999999 : -999999;
+        const recent = h.slice(refIdx - days + 1, refIdx + 1).reduce((acc, curr) => acc + curr.v, 0);
+        const prevIdx = refIdx - (days * 2) + 1;
+        const prev = h.slice(prevIdx, refIdx - days + 1).reduce((acc, curr) => acc + curr.v, 0);
         return prev > 0 ? (recent / prev) : 0;
     };
 
