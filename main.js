@@ -163,7 +163,7 @@ function getFilteredStocks() {
     const indices = ['^NDX', '^SPX'];
     let stocks = currentCategoryData.filter(s => !indices.includes(s.s));
 
-    if (filterType === 'all') return stocks;
+    if (filterType === 'all') return stocks.map(s => ({ s, score: null }));
 
     // Helper to find index for reference date
     const getRefIdx = (h) => {
@@ -242,10 +242,10 @@ function getFilteredStocks() {
             scored.sort((a, b) => a.score - b.score);
             break;
         default:
-            return stocks;
+            return stocks.map(s => ({ s, score: null }));
     }
 
-    return scored.slice(0, 10).map(item => item.s);
+    return scored.slice(0, 10);
 }
 
 function switchDashboard(category) {
@@ -318,8 +318,8 @@ function startAnimationLoop() {
 function updateBubbleChart(date, duration) {
     if (!bubbleChart) return;
     const startDate = document.getElementById('bubble-start-date').value;
-    const stocks = getFilteredStocks();
-    const bubbleData = getBubbleDataForDateRange(stocks, startDate, date);
+    const scoredStocks = getFilteredStocks();
+    const bubbleData = getBubbleDataForDateRange(scoredStocks, startDate, date);
     
     Object.keys(sectorConfig).forEach((sectorId, i) => {
         const sectorData = bubbleData.filter(d => d.sectorId === sectorId);
@@ -331,8 +331,14 @@ function updateBubbleChart(date, duration) {
     document.getElementById('current-bubble-date').textContent = date;
 }
 
-function getBubbleDataForDateRange(stocks, startDate, currentDate) {
-    return stocks.map(stock => {
+function getBubbleDataForDateRange(scoredStocks, startDate, currentDate) {
+    const filterType = document.getElementById('bubble-filter').value;
+    const filterOption = document.querySelector(`#bubble-filter option[value="${filterType}"]`);
+    const filterLabel = filterOption ? filterOption.textContent : '';
+
+    return scoredStocks.map(item => {
+        const stock = item.s;
+        const score = item.score;
         const history = stock.h;
         const currentIdx = history.findIndex(item => item.d === currentDate);
         const startIdx = history.findIndex(item => item.d >= startDate);
@@ -342,10 +348,19 @@ function getBubbleDataForDateRange(stocks, startDate, currentDate) {
         const changePercent = Math.round(((current.c - base.c) / base.c) * 100);
         const marketCap = getMarketCap(stock.s, current.c);
         const sectorId = getSectorId(stock);
+
+        let filterDisplay = '';
+        if (score !== null) {
+            const isVol = filterType.startsWith('vol');
+            const scoreVal = isVol ? score.toFixed(2) : (score * 100).toFixed(1) + '%';
+            filterDisplay = `<tr><td>지표(${filterLabel}):</td><td style="text-align:right"><b>${scoreVal}</b></td></tr>`;
+        }
+
         return {
             id: stock.s, x: changePercent, y: marketCap, z: current.v,
             name: stock.n, code: stock.s, color: sectorConfig[sectorId].color,
-            sectorId: sectorId, sectorName: sectorConfig[sectorId].name, basis: sectorConfig[sectorId].basis
+            sectorId: sectorId, sectorName: sectorConfig[sectorId].name, basis: sectorConfig[sectorId].basis,
+            filterDisplay: filterDisplay
         };
     }).filter(d => d !== null);
 }
@@ -359,7 +374,7 @@ function selectStockByCode(code) {
 }
 
 function renderBubbleChart() {
-    const stocks = getFilteredStocks();
+    const scoredStocks = getFilteredStocks();
     bubbleDates = [...new Set(currentCategoryData.flatMap(s => s.h ? s.h.map(item => item.d) : []))].sort();
     if (bubbleDates.length === 0) return;
     const startDate = document.getElementById('bubble-start-date').value || bubbleDates[0];
@@ -406,9 +421,10 @@ function renderBubbleChart() {
             headerFormat: '<table>',
             pointFormat: '<tr><th colspan="2" style="font-size:1.1em; color:{point.color}">{point.name} ({point.code})</th></tr>' +
                          '<tr><td>섹터:</td><td style="text-align:right"><b>{point.sectorName}</b></td></tr>' +
-                         '<tr><td>수익률:</td><td style="text-align:right"><b>{point.x}%</b></td></tr>' +
+                         '<tr><td>기준일 이후 수익률:</td><td style="text-align:right"><b>{point.x}%</b></td></tr>' +
                          '<tr><td>추정시총:</td><td style="text-align:right"><b>${point.y}B</b></td></tr>' +
-                         '<tr><td>거래량:</td><td style="text-align:right"><b>{point.z}</b></td></tr>',
+                         '<tr><td>거래량:</td><td style="text-align:right"><b>{point.z}</b></td></tr>' +
+                         '{point.filterDisplay}',
             footerFormat: '</table>',
             followPointer: true
         },
