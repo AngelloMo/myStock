@@ -163,7 +163,7 @@ function getFilteredStocks() {
     const indices = ['^NDX', '^SPX'];
     let stocks = currentCategoryData.filter(s => !indices.includes(s.s));
 
-    if (filterType === 'all') return stocks.map(s => ({ s, score: null }));
+    if (filterType === 'all') return stocks.map(s => ({ s, score: null, rank: null }));
 
     // Helper to find index for reference date
     const getRefIdx = (h) => {
@@ -242,10 +242,10 @@ function getFilteredStocks() {
             scored.sort((a, b) => a.score - b.score);
             break;
         default:
-            return stocks.map(s => ({ s, score: null }));
+            return stocks.map(s => ({ s, score: null, rank: null }));
     }
 
-    return scored.slice(0, 10);
+    return scored.slice(0, 10).map((item, index) => ({ ...item, rank: index + 1 }));
 }
 
 function switchDashboard(category) {
@@ -339,6 +339,7 @@ function getBubbleDataForDateRange(scoredStocks, startDate, currentDate) {
     return scoredStocks.map(item => {
         const stock = item.s;
         const score = item.score;
+        const rank = item.rank;
         const history = stock.h;
         const currentIdx = history.findIndex(item => item.d === currentDate);
         const startIdx = history.findIndex(item => item.d >= startDate);
@@ -353,7 +354,9 @@ function getBubbleDataForDateRange(scoredStocks, startDate, currentDate) {
         if (score !== null) {
             const isVol = filterType.startsWith('vol');
             const scoreVal = isVol ? score.toFixed(2) : (score * 100).toFixed(1) + '%';
-            filterDisplay = `<tr><td>지표(${filterLabel}):</td><td style="text-align:right"><b>${scoreVal}</b></td></tr>`;
+            filterDisplay = `<tr><td>순위:</td><td style="text-align:right"><b>Top ${rank}</b></td></tr>` +
+                            `<tr><td>지표:</td><td style="text-align:right"><b>${scoreVal}</b></td></tr>` +
+                            `<tr><td colspan="2" style="font-size:0.85em; color:#666; padding-top:4px;">※ 기준: ${filterLabel}</td></tr>`;
         }
 
         return {
