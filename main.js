@@ -152,6 +152,10 @@ document.addEventListener('DOMContentLoaded', () => {
         renderBubbleChart();
     });
 
+    document.getElementById('sector-filter').addEventListener('change', () => {
+        renderBubbleChart();
+    });
+
     document.getElementById('stock-select').addEventListener('change', e => {
         selectStockByCode(e.target.value);
     });
@@ -159,11 +163,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function getFilteredStocks() {
     const filterType = document.getElementById('bubble-filter').value;
+    const sectorFilter = document.getElementById('sector-filter').value;
     const refDate = document.getElementById('bubble-start-date').value;
     const indices = ['^NDX', '^SPX'];
+    
     let stocks = currentCategoryData.filter(s => !indices.includes(s.s));
 
-    if (filterType === 'all') return stocks.map(s => ({ s, score: null, rank: null }));
+    // 1. Sector Filter apply (only if not doing sector-top calculation)
+    if (sectorFilter !== 'all' && !filterType.startsWith('sector-top')) {
+        stocks = stocks.filter(s => getSectorId(s) === sectorFilter);
+    }
 
     // Helper to find index for reference date
     const getRefIdx = (h) => {
@@ -192,7 +201,39 @@ function getFilteredStocks() {
         return prev > 0 ? (recent / prev) : 0;
     };
 
+    if (filterType === 'all') return stocks.map(s => ({ s, score: null, rank: null }));
+
     let scored = [];
+    
+    // 2. Handle Sector Top 5
+    if (filterType.startsWith('sector-top')) {
+        const days = filterType === 'sector-top-1w' ? 5 : 21;
+        const allScored = stocks.map(s => ({ s, score: getMcapScore(s, days) }));
+        
+        // Group by sector
+        const grouped = {};
+        allScored.forEach(item => {
+            const sid = getSectorId(item.s);
+            if (!grouped[sid]) grouped[sid] = [];
+            grouped[sid].push(item);
+        });
+
+        // Filter by selected sector if needed
+        let targetSectors = Object.keys(grouped);
+        if (sectorFilter !== 'all') targetSectors = [sectorFilter];
+
+        let result = [];
+        targetSectors.forEach(sid => {
+            if (grouped[sid]) {
+                const top5 = grouped[sid].sort((a, b) => b.score - a.score).slice(0, 5);
+                top5.forEach((item, idx) => {
+                    result.push({ ...item, rank: idx + 1 });
+                });
+            }
+        });
+        return result;
+    }
+
     switch (filterType) {
         case 'mcap-up-1w':
             scored = stocks.map(s => ({ s, score: getMcapScore(s, 5) }));
