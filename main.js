@@ -152,26 +152,83 @@ document.addEventListener('DOMContentLoaded', () => {
         renderBubbleChart();
     });
 
-    document.getElementById('sector-filter').addEventListener('change', () => {
-        renderBubbleChart();
-    });
-
     document.getElementById('stock-select').addEventListener('change', e => {
         selectStockByCode(e.target.value);
     });
+
+    // Close multi-select when clicking outside
+    window.addEventListener('click', e => {
+        const ms = document.getElementById('sector-multi-select');
+        if (ms && !ms.contains(e.target)) {
+            document.getElementById('sector-checkboxes').classList.remove('active');
+        }
+    });
 });
+
+window.toggleSectorDropdown = function() {
+    document.getElementById('sector-checkboxes').classList.toggle('active');
+};
+
+window.handleSectorChange = function(checkbox) {
+    const checkboxes = document.querySelectorAll('#sector-checkboxes input[type="checkbox"]');
+    const allCheckbox = checkboxes[0];
+    const sectorCheckboxes = Array.from(checkboxes).slice(1);
+
+    if (checkbox.value === 'all') {
+        if (checkbox.checked) {
+            sectorCheckboxes.forEach(cb => cb.checked = false);
+        }
+    } else {
+        if (checkbox.checked) {
+            allCheckbox.checked = false;
+        }
+    }
+
+    // Ensure at least one is checked, if none, check 'all'
+    const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+    if (!anyChecked) allCheckbox.checked = True;
+
+    // Update display text
+    const selectedSectors = Array.from(sectorCheckboxes)
+        .filter(cb => cb.checked)
+        .map(cb => cb.parentElement.textContent.trim());
+    
+    const textEl = document.getElementById('selected-sectors-text');
+    if (allCheckbox.checked) {
+        textEl.textContent = '전체 섹터';
+    } else {
+        if (selectedSectors.length > 2) {
+            textEl.textContent = `${selectedSectors[0]} 외 ${selectedSectors.length - 1}개`;
+        } else {
+            textEl.textContent = selectedSectors.join(', ') || '선택 없음';
+        }
+    }
+
+    renderBubbleChart();
+};
+
+function getSelectedSectors() {
+    const checkboxes = document.querySelectorAll('#sector-checkboxes input[type="checkbox"]');
+    const allCheckbox = checkboxes[0];
+    if (allCheckbox.checked) return 'all';
+    
+    return Array.from(checkboxes)
+        .slice(1)
+        .filter(cb => cb.checked)
+        .map(cb => cb.value);
+}
 
 function getFilteredStocks() {
     const filterType = document.getElementById('bubble-filter').value;
-    const sectorFilter = document.getElementById('sector-filter').value;
+    const selectedSectors = getSelectedSectors();
     const refDate = document.getElementById('bubble-start-date').value;
     const indices = ['^NDX', '^SPX'];
     
     let stocks = currentCategoryData.filter(s => !indices.includes(s.s));
 
     // 1. Sector Filter apply (only if not doing sector-top calculation)
-    if (sectorFilter !== 'all' && !filterType.startsWith('sector-top')) {
-        stocks = stocks.filter(s => getSectorId(s) === sectorFilter);
+    if (selectedSectors !== 'all' && !filterType.startsWith('sector-top')) {
+        stocks = stocks.filter(s => selectedSectors.includes(getSectorId(s)));
     }
 
     // Helper to find index for reference date
@@ -218,9 +275,9 @@ function getFilteredStocks() {
             grouped[sid].push(item);
         });
 
-        // Filter by selected sector if needed
+        // Filter by selected sectors if needed
         let targetSectors = Object.keys(grouped);
-        if (sectorFilter !== 'all') targetSectors = [sectorFilter];
+        if (selectedSectors !== 'all') targetSectors = selectedSectors;
 
         let result = [];
         targetSectors.forEach(sid => {

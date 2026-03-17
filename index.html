@@ -64,20 +64,26 @@
                     </div>
                     <div class="control-group">
                         <label>섹터:</label>
-                        <select id="sector-filter">
-                            <option value="all">전체 섹터</option>
-                            <option value="Mag7">Mag 7 (빅테크)</option>
-                            <option value="Semicon">반도체</option>
-                            <option value="Software">소프트웨어/보안</option>
-                            <option value="Consumer">소비재/리테일</option>
-                            <option value="BioHealth">바이오/헬스케어</option>
-                            <option value="MediaComm">미디어/통신</option>
-                            <option value="Financial">금융</option>
-                            <option value="Energy">에너지/화학</option>
-                            <option value="Industrial">산업재/장비</option>
-                            <option value="Transport">물류/운송</option>
-                            <option value="Utility">유틸리티/인프라</option>
-                        </select>
+                        <div class="multi-select" id="sector-multi-select">
+                            <div class="select-box" onclick="toggleSectorDropdown()">
+                                <span id="selected-sectors-text">전체 섹터</span>
+                                <span class="arrow">▼</span>
+                            </div>
+                            <div class="checkboxes" id="sector-checkboxes">
+                                <label><input type="checkbox" value="all" checked onchange="handleSectorChange(this)"> 전체 선택</label>
+                                <label><input type="checkbox" value="Mag7" onchange="handleSectorChange(this)"> Mag 7 (빅테크)</label>
+                                <label><input type="checkbox" value="Semicon" onchange="handleSectorChange(this)"> 반도체</label>
+                                <label><input type="checkbox" value="Software" onchange="handleSectorChange(this)"> 소프트웨어/보안</label>
+                                <label><input type="checkbox" value="Consumer" onchange="handleSectorChange(this)"> 소비재/리테일</label>
+                                <label><input type="checkbox" value="BioHealth" onchange="handleSectorChange(this)"> 바이오/헬스케어</label>
+                                <label><input type="checkbox" value="MediaComm" onchange="handleSectorChange(this)"> 미디어/통신</label>
+                                <label><input type="checkbox" value="Financial" onchange="handleSectorChange(this)"> 금융</label>
+                                <label><input type="checkbox" value="Energy" onchange="handleSectorChange(this)"> 에너지/화학</label>
+                                <label><input type="checkbox" value="Industrial" onchange="handleSectorChange(this)"> 산업재/장비</label>
+                                <label><input type="checkbox" value="Transport" onchange="handleSectorChange(this)"> 물류/운송</label>
+                                <label><input type="checkbox" value="Utility" onchange="handleSectorChange(this)"> 유틸리티/인프라</label>
+                            </div>
+                        </div>
                     </div>
                     <div class="control-group">
                         <label>필터:</label>

@@ -357,3 +357,60 @@ h1 {
         flex: 1;
     }
 }
+
+/* Multi-select Dropdown */
+.multi-select {
+    position: relative;
+    width: 100%;
+}
+
+.multi-select .select-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.multi-select .checkboxes {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    z-index: 1000;
+    max-height: 200px;
+    overflow-y: auto;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.multi-select .checkboxes.active {
+    display: flex;
+    flex-direction: column;
+}
+
+.multi-select .checkboxes label {
+    padding: 8px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9em;
+    font-weight: normal;
+}
+
+.multi-select .checkboxes label:hover {
+    background-color: #f0f2f5;
+}
+
+.multi-select .arrow {
+    font-size: 0.7em;
+    color: #65676b;
+}
