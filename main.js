@@ -193,6 +193,10 @@ function getFilteredStocks() {
 
     let scored = [];
     switch (filterType) {
+        case 'mcap-up-1w':
+            scored = stocks.map(s => ({ s, score: getMcapScore(s, 5) }));
+            scored.sort((a, b) => b.score - a.score);
+            break;
         case 'mcap-up-1m':
             scored = stocks.map(s => ({ s, score: getMcapScore(s, 21) }));
             scored.sort((a, b) => b.score - a.score);
@@ -204,6 +208,10 @@ function getFilteredStocks() {
         case 'mcap-up-1y':
             scored = stocks.map(s => ({ s, score: getMcapScore(s, 252) }));
             scored.sort((a, b) => b.score - a.score);
+            break;
+        case 'mcap-down-1w':
+            scored = stocks.map(s => ({ s, score: getMcapScore(s, 5) }));
+            scored.sort((a, b) => a.score - b.score);
             break;
         case 'mcap-down-1m':
             scored = stocks.map(s => ({ s, score: getMcapScore(s, 21) }));
