@@ -42,6 +42,10 @@ This project is configured with a GitHub Action (`.github/workflows/daily_update
     4.  Commits and pushes the updated `stock.json` back to the repository.
     5.  This push triggers the `deploy.yml` workflow, which redeploys the site to GitHub Pages.
 
+## Recent Activity
+
+*   **Manual Data Update (2026-03-26):** Verified that `stock.json` was last updated on 2026-03-16. Manually executed `generate_stock_data.py` to retrieve missing data up to 2026-03-25 and pushed the updated `stock.json` to GitHub.
+
 ## How to run:
 
 1.  **Generate `stock.json`**: Run the `generate_stock_data.py` script using `nix-shell --run "python3 generate_stock_data.py"`. This will create the `stock.json` file in the project root.
