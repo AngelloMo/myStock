@@ -296,8 +296,16 @@ function getFilteredStocks() {
             scored = stocks.map(s => ({ s, score: getMcapScore(s, 5) }));
             scored.sort((a, b) => b.score - a.score);
             break;
+        case 'mcap-up-2w':
+            scored = stocks.map(s => ({ s, score: getMcapScore(s, 10) }));
+            scored.sort((a, b) => b.score - a.score);
+            break;
         case 'mcap-up-1m':
             scored = stocks.map(s => ({ s, score: getMcapScore(s, 21) }));
+            scored.sort((a, b) => b.score - a.score);
+            break;
+        case 'mcap-up-2m':
+            scored = stocks.map(s => ({ s, score: getMcapScore(s, 42) }));
             scored.sort((a, b) => b.score - a.score);
             break;
         case 'mcap-up-3m':
