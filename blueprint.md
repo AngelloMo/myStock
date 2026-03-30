@@ -11,8 +11,8 @@ This project is a single-page web application that allows users to view historic
 *   **Timeframe Selection:** Users can switch between Daily, Weekly, and Monthly views of the stock chart.
 *   **Data Aggregation:** The application aggregates daily data into weekly and monthly formats on the client-side to display charts for different timeframes.
 *   **Interactive Chart:** Displays an interactive historical candlestick chart using Highcharts Stock, including volume data.
-*   **Bubble Chart Animation & Filtering:** Visualizes stock price changes over time with animated bubbles. Includes play/pause controls, a date slider for manual navigation, and configurable speed multipliers (0.25x to 4x). **Stock filtering (e.g., Top 10 Gainers, Sector-specific Top 5) is dynamically calculated based on the performance over the specified period (1 week, 2 weeks, 1 month, 2 months, etc.) leading up to the selected reference date (기준일 이전). Users can also filter the chart by selecting multiple sectors (e.g., Semicon + Software) via a custom multi-select dropdown.** Specific rank (Top X) and indicator values are displayed in the chart's tooltip. Dedicated ranking pages for 2-week, 1-month, and 2-month performance are also provided.
-*   **Ranking Pages:** Dedicated pages (`top-2w.html`, `top-1m.html`, `top-2m.html`) that provide direct access to the Top 10 stocks by return over 2-week, 1-month, and 2-month timeframes, respectively.
+*   **Bubble Chart Animation & Filtering:** Visualizes stock price changes over time with animated bubbles. Includes play/pause controls, a date slider for manual navigation, and configurable speed multipliers (0.25x to 4x). **Stock filtering (e.g., Top 10 Gainers, Sector-specific Top 5) is dynamically calculated. Top 10 rankings (1w, 2w, 1m, 2m, 3m) are always based on the latest available market data ("Today's basis") to show current leaders.** Users can also filter the chart by selecting multiple sectors (e.g., Semicon + Software) via a custom multi-select dropdown. Specific rank (Top X) and indicator values are displayed in the chart's tooltip.
+*   **Ranking Pages:** Dedicated pages (`top-2w.html`, `top-1m.html`, `top-2m.html`, `top-3m.html`) that provide direct access to the Top 10 stocks by return over 2-week, 1-month, 2-month, and 3-month timeframes, respectively, all based on the latest available data.
 *   **Real-time Visitor Counter:** Tracks total and daily visitor counts using CounterAPI. Stats are viewable on the Admin page. Optimized for high performance (2026-03-16) by implementing direct API calls and parallel data fetching.
 
 ## Tech Stack
@@ -45,6 +45,7 @@ This project is configured with a GitHub Action (`.github/workflows/daily_update
 
 ## Recent Activity
 
+*   **Ranking Update (2026-03-30):** Added 3-month Top 10 ranking page and updated all Top 10 logic to be based on the latest available data point instead of the selectable reference date.
 *   **Manual Data Update (2026-03-26):** Verified that `stock.json` was last updated on 2026-03-16. Manually executed `generate_stock_data.py` to retrieve missing data up to 2026-03-25 and pushed the updated `stock.json` to GitHub.
 
 ## How to run:
